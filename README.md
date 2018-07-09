@@ -98,16 +98,17 @@ This inherently causes som batches to be smaller than the desired batch_size, al
 is retained in these cases. Note that this batching strategy only employes padding on character sequences. 
 
 ``ScaledBatcher`` groups sentences into clusters with 1D k-nearest nabors, and pads everyting to the longest sample in each batch. 
-The batch size is unorthodox in that it is a scaled product of the number of tokens. A batch size is, given a cluster of size ``c`` 
-and its longest sentence length ``l`` 
+The batch size is unorthodox in that it is a scaled product of the number of tokens. The essence of this strategy is to maintain
+(an approximate) constant token count in each batch. Even though some batches may contain many or few actual sentences, 
+the contained token information remains the same at each learning step.
+A batch size is, given a cluster size ``c``, and longest sentence length ``l`` .
 
 <img src="https://latex.codecogs.com/svg.latex?\Large&space;nsplits=\frac{c}{(cl)/scale}" />
 <br>
 <img src="https://latex.codecogs.com/svg.latex?\Large&space;batch\_size=\frac{c}{nsplits}" />
 
- 
-In essence this scales batches with long sentences to be short, and longer for short sentences. 
-Note that this batching strategy employes padding on both word level, as well as character sequences.  
+
+This batching strategy employes padding on both word level, as well as character sequences.
 
 
 ```
