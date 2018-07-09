@@ -161,11 +161,11 @@ cdef class BetaEncodeHandler:
                     _pred_upos = pred_t[i]
                     _succ_upos = succ_t[i]
 
-                    self.encode_rel(_word, _upos, _pred_upos, _succ_upos, label, isRA=False, isTarget=False, out=rel_features[i, label, 0, 0])
-                    self.encode_rel(_word, _upos, _pred_upos, _succ_upos, label, isRA=True, isTarget=False, out=rel_features[i, label, 1, 0])
+                    self.encode_rel(i, _word, _upos, _pred_upos, _succ_upos, label, isRA=False, isTarget=False, out=rel_features)
+                    self.encode_rel(i, _word, _upos, _pred_upos, _succ_upos, label, isRA=True, isTarget=False, out=rel_features)
 
-                    self.encode_rel(_word, _upos, _pred_upos, _succ_upos, label, isRA=False, isTarget=True, out=rel_features[i, label, 0, 1])
-                    self.encode_rel(_word, _upos, _pred_upos, _succ_upos, label, isRA=True, isTarget=True, out=rel_features[i, label, 1, 1])
+                    self.encode_rel(i, _word, _upos, _pred_upos, _succ_upos, label, isRA=False, isTarget=True, out=rel_features)
+                    self.encode_rel(i, _word, _upos, _pred_upos, _succ_upos, label, isRA=True, isTarget=True, out=rel_features)
 
             # encode edge
             for j in range(n):
@@ -174,7 +174,7 @@ cdef class BetaEncodeHandler:
                 elif target_arcs is not None and target_arcs[j] != i:
                     continue
                 else:
-                    self.encode_edge(i, j, forms, upos, pred_t, succ_t, arc_features[i, j, :])
+                    self.encode_edge(i, j, forms, upos, pred_t, succ_t, arc_features)
 
         return arc_features, rel_features
 
@@ -208,7 +208,7 @@ cdef class BetaEncodeHandler:
         np.uint64_t[:] upos,
         np.uint64_t[:] pred_t,
         np.uint64_t[:] succ_t,
-        np.uint64_t[:] out) nogil:
+        np.uint64_t[:,:,:] out) nogil:
 
         cdef np.uint64_t fst_pred_t
         cdef np.uint64_t snd_succ_t
@@ -264,44 +264,44 @@ cdef class BetaEncodeHandler:
 
         for mid in range(fst+1, snd):
             mid_t = upos[mid]
-            out[inc(fi)] = encode_4(fst_t, snd_t, mid_t, TMP_00)
-            out[inc(fi)] = encode_5(fst_t, snd_t, mid_t, attDist, TMP_00)
+            out[i,j,inc(fi)] = encode_4(fst_t, snd_t, mid_t, TMP_00)
+            out[i,j,inc(fi)] = encode_5(fst_t, snd_t, mid_t, attDist, TMP_00)
 
-        out[inc(fi)] = encode_4(fst_pred_t, fst_t, snd_t, TMP_01)
-        out[inc(fi)] = encode_5(fst_pred_t, fst_t, snd_t, attDist, TMP_01)
+        out[i,j,inc(fi)] = encode_4(fst_pred_t, fst_t, snd_t, TMP_01)
+        out[i,j,inc(fi)] = encode_5(fst_pred_t, fst_t, snd_t, attDist, TMP_01)
 
-        out[inc(fi)] = encode_5(fst_pred_t, fst_t, snd_t, snd_succ_t, TMP_02)
-        out[inc(fi)] = encode_6(fst_pred_t, fst_t, snd_t, snd_succ_t, attDist, TMP_02)
+        out[i,j,inc(fi)] = encode_5(fst_pred_t, fst_t, snd_t, snd_succ_t, TMP_02)
+        out[i,j,inc(fi)] = encode_6(fst_pred_t, fst_t, snd_t, snd_succ_t, attDist, TMP_02)
 
-        out[inc(fi)] = encode_4(fst_pred_t, snd_t, snd_succ_t, TMP_03)
-        out[inc(fi)] = encode_5(fst_pred_t, snd_t, snd_succ_t, attDist, TMP_03)
+        out[i,j,inc(fi)] = encode_4(fst_pred_t, snd_t, snd_succ_t, TMP_03)
+        out[i,j,inc(fi)] = encode_5(fst_pred_t, snd_t, snd_succ_t, attDist, TMP_03)
 
-        out[inc(fi)] = encode_4(fst_pred_t, fst_t, snd_succ_t, TMP_04)
-        out[inc(fi)] = encode_5(fst_pred_t, fst_t, snd_succ_t, attDist, TMP_04)
+        out[i,j,inc(fi)] = encode_4(fst_pred_t, fst_t, snd_succ_t, TMP_04)
+        out[i,j,inc(fi)] = encode_5(fst_pred_t, fst_t, snd_succ_t, attDist, TMP_04)
 
-        out[inc(fi)] = encode_4(fst_t, snd_t, snd_succ_t, TMP_05)
-        out[inc(fi)] = encode_5(fst_t, snd_t, snd_succ_t, attDist, TMP_05)
+        out[i,j,inc(fi)] = encode_4(fst_t, snd_t, snd_succ_t, TMP_05)
+        out[i,j,inc(fi)] = encode_5(fst_t, snd_t, snd_succ_t, attDist, TMP_05)
 
-        out[inc(fi)] = encode_4(fst_t, fst_succ_t, snd_pred_t, TMP_06)
-        out[inc(fi)] = encode_5(fst_t, fst_succ_t, snd_pred_t, attDist, TMP_06)
+        out[i,j,inc(fi)] = encode_4(fst_t, fst_succ_t, snd_pred_t, TMP_06)
+        out[i,j,inc(fi)] = encode_5(fst_t, fst_succ_t, snd_pred_t, attDist, TMP_06)
 
-        out[inc(fi)] = encode_5(fst_t, fst_succ_t, snd_pred_t, snd_t, TMP_07)
-        out[inc(fi)] = encode_6(fst_t, fst_succ_t, snd_pred_t, snd_t, attDist, TMP_07)
+        out[i,j,inc(fi)] = encode_5(fst_t, fst_succ_t, snd_pred_t, snd_t, TMP_07)
+        out[i,j,inc(fi)] = encode_6(fst_t, fst_succ_t, snd_pred_t, snd_t, attDist, TMP_07)
 
-        out[inc(fi)] = encode_4(fst_t, fst_succ_t, snd_t, TMP_08)
-        out[inc(fi)] = encode_5(fst_t, fst_succ_t, snd_t, attDist, TMP_08)
+        out[i,j,inc(fi)] = encode_4(fst_t, fst_succ_t, snd_t, TMP_08)
+        out[i,j,inc(fi)] = encode_5(fst_t, fst_succ_t, snd_t, attDist, TMP_08)
 
-        out[inc(fi)] = encode_4(fst_t, snd_pred_t, snd_t, TMP_09)
-        out[inc(fi)] = encode_5(fst_t, snd_pred_t, snd_t, attDist, TMP_09)
+        out[i,j,inc(fi)] = encode_4(fst_t, snd_pred_t, snd_t, TMP_09)
+        out[i,j,inc(fi)] = encode_5(fst_t, snd_pred_t, snd_t, attDist, TMP_09)
 
-        out[inc(fi)] = encode_4(fst_succ_t, snd_pred_t, snd_t, TMP_10)
-        out[inc(fi)] = encode_5(fst_succ_t, snd_pred_t, snd_t, attDist, TMP_10)
+        out[i,j,inc(fi)] = encode_4(fst_succ_t, snd_pred_t, snd_t, TMP_10)
+        out[i,j,inc(fi)] = encode_5(fst_succ_t, snd_pred_t, snd_t, attDist, TMP_10)
 
-        out[inc(fi)] = encode_4(fst_t, snd_pred_t, snd_t, TMP_11)
-        out[inc(fi)] = encode_5(fst_t, snd_pred_t, snd_t, attDist, TMP_11)
+        out[i,j,inc(fi)] = encode_4(fst_t, snd_pred_t, snd_t, TMP_11)
+        out[i,j,inc(fi)] = encode_5(fst_t, snd_pred_t, snd_t, attDist, TMP_11)
 
-        out[inc(fi)] = encode_5(fst_t, fst_succ_t, snd_t, snd_succ_t, TMP_12)
-        out[inc(fi)] = encode_6(fst_t, fst_succ_t, snd_t, snd_succ_t, attDist, TMP_12)
+        out[i,j,inc(fi)] = encode_5(fst_t, fst_succ_t, snd_t, snd_succ_t, TMP_12)
+        out[i,j,inc(fi)] = encode_6(fst_t, fst_succ_t, snd_t, snd_succ_t, attDist, TMP_12)
 
         src = fst
         tgt = snd
@@ -311,46 +311,47 @@ cdef class BetaEncodeHandler:
         tgt_w = forms[tgt]
         tgt_t = upos[tgt]
 
-        out[inc(fi)] = encode_2(src_w, TMP_13)
-        out[inc(fi)] = encode_3(src_w, attDist, TMP_13)
+        out[i,j,inc(fi)] = encode_2(src_w, TMP_13)
+        out[i,j,inc(fi)] = encode_3(src_w, attDist, TMP_13)
 
-        out[inc(fi)] = encode_3(src_w, src_t, TMP_14)
-        out[inc(fi)] = encode_4(src_w, src_t, attDist, TMP_14)
+        out[i,j,inc(fi)] = encode_3(src_w, src_t, TMP_14)
+        out[i,j,inc(fi)] = encode_4(src_w, src_t, attDist, TMP_14)
 
-        out[inc(fi)] = encode_4(src_w, src_t, tgt_t, TMP_15)
-        out[inc(fi)] = encode_5(src_w, src_t, tgt_t, attDist, TMP_15)
+        out[i,j,inc(fi)] = encode_4(src_w, src_t, tgt_t, TMP_15)
+        out[i,j,inc(fi)] = encode_5(src_w, src_t, tgt_t, attDist, TMP_15)
 
-        out[inc(fi)] = encode_5(src_w, src_t, tgt_t, tgt_w, TMP_16)
-        out[inc(fi)] = encode_6(src_w, src_t, tgt_t, tgt_w, attDist, TMP_16)
+        out[i,j,inc(fi)] = encode_5(src_w, src_t, tgt_t, tgt_w, TMP_16)
+        out[i,j,inc(fi)] = encode_6(src_w, src_t, tgt_t, tgt_w, attDist, TMP_16)
 
-        out[inc(fi)] = encode_3(src_w, tgt_w, TMP_17)
-        out[inc(fi)] = encode_4(src_w, tgt_w, attDist, TMP_17)
+        out[i,j,inc(fi)] = encode_3(src_w, tgt_w, TMP_17)
+        out[i,j,inc(fi)] = encode_4(src_w, tgt_w, attDist, TMP_17)
 
-        out[inc(fi)] = encode_3(src_w, tgt_t, TMP_18)
-        out[inc(fi)] = encode_4(src_w, tgt_t, attDist, TMP_18)
+        out[i,j,inc(fi)] = encode_3(src_w, tgt_t, TMP_18)
+        out[i,j,inc(fi)] = encode_4(src_w, tgt_t, attDist, TMP_18)
 
-        out[inc(fi)] = encode_3(src_t, tgt_w, TMP_19)
-        out[inc(fi)] = encode_4(src_t, tgt_w, attDist, TMP_19)
+        out[i,j,inc(fi)] = encode_3(src_t, tgt_w, TMP_19)
+        out[i,j,inc(fi)] = encode_4(src_t, tgt_w, attDist, TMP_19)
 
-        out[inc(fi)] = encode_4(src_t, tgt_w, tgt_t, TMP_20)
-        out[inc(fi)] = encode_5(src_t, tgt_w, tgt_t, attDist, TMP_20)
+        out[i,j,inc(fi)] = encode_4(src_t, tgt_w, tgt_t, TMP_20)
+        out[i,j,inc(fi)] = encode_5(src_t, tgt_w, tgt_t, attDist, TMP_20)
 
-        out[inc(fi)] = encode_3(src_t, tgt_t, TMP_21)
-        out[inc(fi)] = encode_4(src_t, tgt_t, attDist, TMP_21)
+        out[i,j,inc(fi)] = encode_3(src_t, tgt_t, TMP_21)
+        out[i,j,inc(fi)] = encode_4(src_t, tgt_t, attDist, TMP_21)
 
-        out[inc(fi)] = encode_3(tgt_w, tgt_t, TMP_22)
-        out[inc(fi)] = encode_4(tgt_w, tgt_t, attDist, TMP_22)
+        out[i,j,inc(fi)] = encode_3(tgt_w, tgt_t, TMP_22)
+        out[i,j,inc(fi)] = encode_4(tgt_w, tgt_t, attDist, TMP_22)
 
-        out[inc(fi)] = encode_2(src_t, TMP_23)
-        out[inc(fi)] = encode_3(src_t, attDist, TMP_23)
+        out[i,j,inc(fi)] = encode_2(src_t, TMP_23)
+        out[i,j,inc(fi)] = encode_3(src_t, attDist, TMP_23)
 
-        out[inc(fi)] = encode_2(tgt_w, TMP_24)
-        out[inc(fi)] = encode_3(tgt_w, attDist, TMP_24)
+        out[i,j,inc(fi)] = encode_2(tgt_w, TMP_24)
+        out[i,j,inc(fi)] = encode_3(tgt_w, attDist, TMP_24)
         
-        out[inc(fi)] = encode_2(tgt_t, TMP_25)
-        out[inc(fi)] = encode_3(tgt_t, attDist, TMP_25)
+        out[i,j,inc(fi)] = encode_2(tgt_t, TMP_25)
+        out[i,j,inc(fi)] = encode_3(tgt_t, attDist, TMP_25)
     
     cdef inline void encode_rel(self, 
+        int i,
         int node_w,
         int node_t,
         int node_pred_t,
@@ -358,29 +359,29 @@ cdef class BetaEncodeHandler:
         int label,
         int isRA,
         int isTarget,
-        np.uint64_t[:] out) nogil:
+        np.uint64_t[:,:,:,:,:] out) nogil:
 
         cdef int index = 0
 
         suffix = makePair(isRA, isTarget) << 1 | 1
 
-        out[inc(index)] = encode_2(label, TMP_26)
-        out[inc(index)] = encode_3(label, suffix, TMP_26)
+        out[i,label,isRA,isTarget,inc(index)] = encode_2(label, TMP_26)
+        out[i,label,isRA,isTarget,inc(index)] = encode_3(label, suffix, TMP_26)
 
-        out[inc(index)] = encode_4(node_w, node_t, label, TMP_27)
-        out[inc(index)] = encode_5(node_w, node_t, label, suffix, TMP_27)
+        out[i,label,isRA,isTarget,inc(index)] = encode_4(node_w, node_t, label, TMP_27)
+        out[i,label,isRA,isTarget,inc(index)] = encode_5(node_w, node_t, label, suffix, TMP_27)
 
-        out[inc(index)] = encode_3(node_t, label, TMP_28)
-        out[inc(index)] = encode_4(node_t, label, suffix, TMP_28)
+        out[i,label,isRA,isTarget,inc(index)] = encode_3(node_t, label, TMP_28)
+        out[i,label,isRA,isTarget,inc(index)] = encode_4(node_t, label, suffix, TMP_28)
 
-        out[inc(index)] = encode_4(node_pred_t, node_t, label, TMP_29)
-        out[inc(index)] = encode_5(node_pred_t, node_t, label, suffix, TMP_29)
+        out[i,label,isRA,isTarget,inc(index)] = encode_4(node_pred_t, node_t, label, TMP_29)
+        out[i,label,isRA,isTarget,inc(index)] = encode_5(node_pred_t, node_t, label, suffix, TMP_29)
 
-        out[inc(index)] = encode_4(node_t, node_succ_t, label, TMP_30)
-        out[inc(index)] = encode_5(node_t, node_succ_t, label, suffix, TMP_30)
+        out[i,label,isRA,isTarget,inc(index)] = encode_4(node_t, node_succ_t, label, TMP_30)
+        out[i,label,isRA,isTarget,inc(index)] = encode_5(node_t, node_succ_t, label, suffix, TMP_30)
 
-        out[inc(index)] = encode_5(node_pred_t, node_t, node_succ_t, label, TMP_31)
-        out[inc(index)] = encode_6(node_pred_t, node_t, node_succ_t, label, suffix, TMP_31)
+        out[i,label,isRA,isTarget,inc(index)] = encode_5(node_pred_t, node_t, node_succ_t, label, TMP_31)
+        out[i,label,isRA,isTarget,inc(index)] = encode_6(node_pred_t, node_t, node_succ_t, label, suffix, TMP_31)
         
-        out[inc(index)] = encode_3(node_w, label, TMP_32)
-        out[inc(index)] = encode_4(node_w, label, suffix, TMP_32)
+        out[i,label,isRA,isTarget,inc(index)] = encode_3(node_w, label, TMP_32)
+        out[i,label,isRA,isTarget,inc(index)] = encode_4(node_w, label, suffix, TMP_32)
