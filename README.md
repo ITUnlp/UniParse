@@ -42,25 +42,23 @@ python run_kiperwasser.py \
 
 ```
 
-[ADD NUMBERS--DANIEL]
-
 Arguments surrounded by parentheses are optional. Note that many more arguments exist, and these are default-configured accordingly to the published configuration.  
 
 ## Included models performance
 | Model                          |   Language    |   UAS wp.   |   LAS wp.   |   UAS np.   |   LAS np.  |
 | ------------------------------ | ------------- | ----------- | ----------- | ----------- | -----------|
 | Kiperwasser & Goldberg (2017)  |               |             |             |             |            |
-|                                |  Danish (UD)  | 83.18%	   | 79.57%      | 83.67%      | 79.47%     |
+|                                |  Danish (UD)  | 83.18%      | 79.57%      | 83.67%      | 79.47%     |
 |                                |  English (UD) | 87.06%      | 84.68%      | 88.08%      | 85.43%     |
 |                                | English (PTB) | 92.56%      | 91.17%      | 93.14%      | 91.57%     |
 | Dozat & Manning (2017)         |    -          |             |             |             |            |
 |                                |  Danish (UD)  | 87.42%      | 84.98%      | 87.84%      | 84.99%     |
-|                                |  English (UD) |             |             |             |            |
-|                                | English (PTB) | 94.91%      | 93.70%      |	95.43%     | 94.06%     |
+|                                |  English (UD) | 90.74       | 89.01%      | 91.47       | 89.38      |
+|                                | English (PTB) | 94.91%      | 93.70%      | 95.43%      | 94.06%     |
 | MST (non-neural)               | -             |             |             |             |            |
-|                                |  Danish (UD)  |             |             |             |            |
-|                                |  English (UD) |             |             |             |            |
-|                                | English (PTB) |             |             |             |            |
+|                                |  Danish (UD)  | 67.17       | 55.52       | 68.80       | 55.30      |
+|                                |  English (UD) | 73.47       | 65.20       | 75.55       | 66.25      |
+|                                | English (PTB) | 74.00       | 63.60       | 76.07       | 64.67      |
 
 with `wp.` denoting 'with punctuation', and `np.` 'no punctuation'. No punctuation follows the rule of excluding modifier tokens consisting entirely of unicode punctuation characters; this option is standard in current research.
 
@@ -128,7 +126,6 @@ indexes, batches = dataprovider.get_data([batch_size | scale], shuffle=[True | F
 
 ```
 #### Model
-...
 
 #### Evaluation Suite
 Uniparse includes a unified script that covers utility and semantics of all previous commonly used evaluation implementations.
@@ -150,7 +147,8 @@ or use it from within your code
 
 
 ## PTB split
-[ADD EXPLANATION--DANIEL]
+Since the splitting of Penn treebank files is non-standerdized we denote a split, as well as supporting literature.
+
 | Dataset   |   artitions   |
 | --------- | ------------- |
 | train     | `{02-21}`     |
@@ -169,7 +167,6 @@ cat 23.trees.conllu > test.conllu
 ````
 
 
-### Support
 [PLACE REFERENCES--NATALIE]
  - https://github.com/clulab/processors/wiki/Training-the-Neural-Network-Parser
  - https://arxiv.org/pdf/1602.07776.pdf
