@@ -1,7 +1,8 @@
 # UniParse
 
-UniParse: A universal graph-based parsing toolkit
-# Parse framework for quick prototyping and comparison of components
+UniParse: A universal graph-based parsing framework, for quick prototyping and comparison of components.  If you use UniParse, please cite
+
+Varab, Daniel and Natalie Schluter. (2018). UniParse: A universal graph-based parsing framework. Complete this reference!!
 
 ## Installing
 
