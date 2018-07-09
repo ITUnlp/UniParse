@@ -149,12 +149,9 @@ or use it from within your code
 ## PTB split
 Since the splitting of Penn treebank files is non-standerdized we denote a split, as well as supporting literature.
 
-| Dataset   |   artitions   |
-| --------- | ------------- |
-| train     | `{02-21}`     |
-| dev       | `{22}`        |
-| test      | `{23}`        |
-| discard   | `{00}`        |
+|   Train   |  Dev   |  Test  | Discard |
+|:---------:|:------:|:------:|:-------:|
+| `{02-21}` | `{22}` | `{23}` | `{00}`  | 
 
 
 Run the following bash command to produce the corresponding conll formated files
