@@ -116,11 +116,11 @@ bucket_provider = BucketBatcher(data, padding_token=[vocab.PAD | SOME_INTEGER])
 scaled_provider = ScaledBatcher(data, cluster_count=..., padding_token=[vocab.PAD | SOME_INTEGER])
             
 """
-indexes :: List[np.ndarray]
+indexes :: List
   list of original indicies to sort them in the end.
-batches :: List[(x=Tuple[ndarray], y=Tuple[ndarray])] 
-  where len(y) == 2 for (target arcs and target relations)
-  and len(x) == number of features [form, lemma, tag, characters]
+batches :: List[(x=Tuple, y=Tuple)] 
+  where len(x) == number of features [form, lemma, tag, characters]
+  and len(y) == 2 for (target arcs and target relations)
 """
 indexes, batches = dataprovider.get_data([batch_size | scale], shuffle=[True | False])
 
@@ -149,6 +149,8 @@ or use it from within your code
 
 ## PTB split
 Since the splitting of Penn treebank files is non-standerdized we denote a split, as well as supporting literature.
+Note that published model performances use different splits, which we have observed to have a observerable impact on performance. Importantly we draw attention [Dozat and Manning](https://arxiv.org/pdf/1611.01734.pdf) performans differently under other splits that reported in the published work.
+
 
 |   Train   |  Dev   |  Test  | Discard |
 |:---------:|:------:|:------:|:-------:|
