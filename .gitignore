@@ -6,6 +6,7 @@ __pycache__/
 *.so
 *.c
 *.cpp
+*.html
 
 # Distribution / packaging
 bin/
