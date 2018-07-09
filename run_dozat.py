@@ -23,7 +23,7 @@ argparser.add_argument("--dev", dest="dev", help="Annotated CONLL dev file", met
 argparser.add_argument("--test", dest="test", help="Annotated CONLL dev test", metavar="FILE", required=True)
 argparser.add_argument("--emb", dest="embedding_file")
 argparser.add_argument("--epochs", dest="epochs", type=int, default=283)
-argparser.add_argument("--tb_dest", dest="tb_dest", required=True)
+argparser.add_argument("--tb_dest", dest="tb_dest", required=False)
 argparser.add_argument("--vocab_dest", dest="vocab_dest")
 argparser.add_argument("--model_dest", dest="model_dest", required=True)
 
@@ -105,10 +105,13 @@ model = BaseParser(vocab, word_dims, tag_dims,
 optimizer = dy.AdamTrainer(model.parameter_collection, learning_rate, beta_1, beta_2, epsilon)
 
 """ Callbacks """
-tensorboard_logger = TensorboardLoggerCallback(tensorboard_destination)
 custom_learning_update_callback = UpdateParamsCallback()
 save_callback = ModelSaveCallback(model_destination)
-callbacks = [tensorboard_logger, custom_learning_update_callback, save_callback]
+if arguments.tb_dest:
+    tensorboard_logger = TensorboardLoggerCallback(tensorboard_destination)
+    callbacks = [tensorboard_logger, custom_learning_update_callback, save_callback]
+else:
+    callbacks = [custom_learning_update_callback, save_callback]
 
 parser = Model(
     model, decoder="cle", loss="crossentropy", optimizer=optimizer, strategy="scaled_batch", vocab=vocab)
