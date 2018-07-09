@@ -1,8 +1,10 @@
 # UniParse
 
-UniParse: A universal graph-based parsing framework, for quick prototyping and comparison of components.  If you use UniParse, please cite
+UniParse: A universal graph-based parsing framework, for quick prototyping and comparison of components.  [ADD INTRODUCTORY STUFF--NATALIE] If you use UniParse, please cite
 
 Varab, Daniel and Natalie Schluter. (2018). UniParse: A universal graph-based parsing framework. Complete this reference!!
+
+[ADD INTRO STUFF--NATALIE]
 
 ## Installing
 
@@ -14,6 +16,8 @@ pip install numpy, scipy, sklearn
 # pip install dynet>=2.0.1
 # pip install torch>=0.4
 ```
+
+[ADD INSTALL OVERVIEW STUFF HERE--NATALIE]
 
 ## Compiling Decoders
 ```
@@ -38,6 +42,8 @@ python run_kiperwasser.py \
 
 ```
 
+[ADD NUMBERS--DANIEL]
+
 Arguments surrounded by parentheses are optional. Note that many more arguments exist, and these are default-configured accordingly to the published configuration.  
 
 ## Included models performance
@@ -59,6 +65,7 @@ Arguments surrounded by parentheses are optional. Note that many more arguments 
 with `wp.` denoting 'with punctuation', and `np.` 'no punctuation'. No punctuation follows the rule of excluding modifier tokens consisting entirely of unicode punctuation characters; this option is standard in current research.
 
 ## Description
+[MOVE THIS--NATALIE]
 UniParse is a collection of helpful tools and implementations to assist the process of rapidly developing efficient graph based dependency parsers.
 
 ## Components
@@ -143,6 +150,7 @@ or use it from within your code
 
 
 ## PTB split
+[ADD EXPLANATION--DANIEL]
 | Dataset   |   artitions   |
 | --------- | ------------- |
 | train     | `{02-21}`     |
@@ -162,6 +170,7 @@ cat 23.trees.conllu > test.conllu
 
 
 ### Support
+[PLACE REFERENCES--NATALIE]
  - https://github.com/clulab/processors/wiki/Training-the-Neural-Network-Parser
  - https://arxiv.org/pdf/1602.07776.pdf
  - https://www-cs.stanford.edu/~danqi/papers/emnlp2014.pdf
