@@ -8,8 +8,6 @@ import torch.nn.functional as F
 
 from uniparse.types import Parser
 
-from allennlp.modules.elmo import batch_to_ids
-
 
 class BiRNN(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers):
@@ -95,10 +93,10 @@ class DependencyParser(nn.Module, Parser):
 
         is_train = target_arcs is not None
 
-        if is_train:
-            c = self._propability_map(word_ids, self.i2c)
-            drop_mask = np.greater(0.25/(c+0.25), np.random.rand(*word_ids.shape))
-            word_ids = np.where(drop_mask, self._vocab.OOV, word_ids)  # replace with UNK / OOV
+        # if is_train:
+            # c = self._propability_map(word_ids, self.i2c)
+            # drop_mask = np.greater(0.25/(c+0.25), np.random.rand(*word_ids.shape))
+            # word_ids = np.where(drop_mask, self._vocab.OOV, word_ids)  # replace with UNK / OOV
 
         word_embs = self.wlookup(word_ids)
         upos_embs = self.tlookup(upos_ids)
