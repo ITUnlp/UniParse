@@ -68,8 +68,10 @@ with `wp.` denoting 'with punctuation', and `np.` 'no punctuation'. No punctuati
 ## Components
 Below we describe a brief introduction to each of the core components of the uniparse package, followed by a guide to how to stick them together.
 
+All components are contained in /UniParse/uniparse/
+
 #### Vocabulary
-The vocabulary encapsulates tokenization of strings, and keeps track of mappings from `string -> int` as well as the inverse. This corresponds 1-to-1 to what other parser implementations call 'Alphabet'. The complete separation of this component is meant to ensure that preprocessing effects remain explicit and independently observable.
+The vocabulary encapsulates tokenisation of strings, and keeps track of mappings from `string -> int` as well as the inverse. This corresponds 1-to-1 to what other parser implementations call 'Alphabet'. The complete separation of this component is meant to ensure that preprocessing effects remain explicit and independently observable.
 
 ```
 vocab = Vocabulary()
@@ -78,7 +80,7 @@ vocab = Vocabulary()
 # You may optionally add a pretrained embedding which is then aligned properly.
 vocab = vocab.fit(TRAINING_FILE, EMBEDDING_FILE)
 
-# Tokenize data
+# Tokenise data
 training_data = vocab.tokenize_conll(TRAINING_FILE)
 dev_data = vocab.tokenize_conll(DEV_FILE)
 test_data = vocab.tokenize_conll(TEST_FILE)
@@ -88,15 +90,16 @@ embeddings = vocab.load_embedding(normalize=...)
 
 ```
 
+./uniparse/vocabulary.py specifies the vocabulary.
 
 #### Dataprovider
-Uniparse includes two means of batching the ouput of the vocabularys tokenization. ``BucketBatcher`` and ``ScaledBatcher``.
+Uniparse includes two means of batching the output of the vocabulary's tokenisation. ``BucketBatcher`` and ``ScaledBatcher``.
 
 ``BucketBatcher`` groups sentences of the same length into batches. The size of batches are bounded by a desired batch_size.
-This inherently causes som batches to be smaller than the desired batch_size, all the way down to of size 1. However, the batch dimension
-is retained in these cases. Note that this batching strategy only employes padding on character sequences. 
+This inherently causes some batches to be smaller than the desired batch_size, all the way down to of size 1. However, the batch dimension
+is retained in these cases. Note that this batching strategy only employs padding on character sequences. 
 
-``ScaledBatcher`` groups sentences into clusters with 1D k-nearest nabors, and pads everyting to the longest sample in each batch. 
+``ScaledBatcher`` groups sentences into clusters with 1D k-nearest neighbours, and pads everything to the longest sample in each batch. 
 The batch size is unorthodox in that it is a scaled product of the number of tokens. The essence of this strategy is to maintain
 (an approximate) constant token count in each batch. Even though some batches may contain many or few actual sentences, 
 the contained token information remains the same at each learning step.
@@ -107,7 +110,7 @@ A batch size is, given a cluster size ``c``, and longest sentence length ``l`` .
 <img src="https://latex.codecogs.com/svg.latex?\Large&space;batch\_size=\frac{c}{nsplits}" />
 
 
-This batching strategy employes padding on both word level, as well as character sequences.
+This batching strategy employs padding on both word level, as well as character sequences.
 
 
 ```
@@ -125,15 +128,16 @@ indexes, batches = dataprovider.get_data([batch_size | scale], shuffle=[True | F
 
 
 ```
+
+./uniparse/dataprovider.py specifies the batching strategy.
+
 #### Model
 
 #### Evaluation Suite
-Uniparse includes a unified script that covers utility and semantics of all previous commonly used evaluation implementations.
-The implementation wraps the perl script from conll2006/2007, as well as includes calls conll2017 universal dependency script.
-We reimplement the semantics of the no-puncation metrics specified of the perl script. The script is located in the module 
-``uniparse.evaluation.universal_eval``(.py) and is implemented with no dependencies and may be used directly.
+Uniparse includes a unified script that covers utility and semantics of all previous commonly used evaluation implementations.  The implementation wraps the perl script from conll2006/2007, as well as includes calls conll2017 universal dependency script.
+We reimplement the semantics of the no-punctuation metrics specified within the perl script. The script is located in the module ``uniparse.evaluation.universal_eval``(.py) and is implemented with no dependencies and may be used directly.
 
-call it from the command line
+Call it from the command line
 ````
 python uniparse.evaluation.unversial_eval.py --p PREDICTION_UD_FILE --g GOLD_UD_FILE
 ````
@@ -147,26 +151,13 @@ or use it from within your code
 
 
 ## PTB split
-Since the splitting of Penn treebank files is non-standerdized we denote a split, as well as supporting literature.
-Note that published model performances use different splits, which we have observed to have a observerable impact on performance. Importantly we draw attention [Dozat and Manning](https://arxiv.org/pdf/1611.01734.pdf) performans differently under other splits that reported in the published work.
-
+Since the splitting of Penn treebank files is not fully standerdised we indicate the split used in experiments from [our paper](archivepaperlink), as well as supporting literature.
+Note that published model performances for systems we re-implement and distribute with UniParse may use different splits, which have a observerable impact on performance. Specifically, we note that [Dozat and Manning](https://arxiv.org/pdf/1611.01734.pdf)'s parser performs differently even using under splits than reported in their paper.
 
 |   Train   |  Dev   |  Test  | Discard |
 |:---------:|:------:|:------:|:-------:|
 | `{02-21}` | `{22}` | `{23}` | `{00}`  | 
 
 
-Run the following bash command to produce the corresponding conll formated files
-
-````
-cat 02.trees.conllu 03.trees.conllu 04.trees.conllu 05.trees.conllu 06.trees.conllu 07.trees.conllu 08.trees.conllu 09.trees.conllu 10.trees.conllu 11.trees.conllu 12.trees.conllu 13.trees.conllu 14.trees.conllu 15.trees.conllu 16.trees.conllu 17.trees.conllu 18.trees.conllu 19.trees.conllu 20.trees.conllu 21.trees.conllu > train.conllu
-cat 22.trees.conllu > dev.conllu
-cat 23.trees.conllu > test.conllu
-
-````
 
 
-[PLACE REFERENCES--NATALIE]
- - https://github.com/clulab/processors/wiki/Training-the-Neural-Network-Parser
- - https://arxiv.org/pdf/1602.07776.pdf
- - https://www-cs.stanford.edu/~danqi/papers/emnlp2014.pdf
