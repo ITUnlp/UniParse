@@ -132,6 +132,7 @@ indexes, batches = dataprovider.get_data([batch_size | scale], shuffle=[True | F
 ./uniparse/dataprovider.py specifies the batching strategy.
 
 #### Model
+./uniparse/model.py together with a specialised model file placed in ./uniparse/models/ specifies the parser model.  For example, the distributed parser implementations are located in ./uniparse/models/
 
 #### Evaluation Suite
 Uniparse includes a unified script that covers utility and semantics of all previous commonly used evaluation implementations.  The implementation wraps the perl script from conll2006/2007, as well as includes calls conll2017 universal dependency script.
@@ -157,7 +158,4 @@ Note that published model performances for systems we re-implement and distribut
 |   Train   |  Dev   |  Test  | Discard |
 |:---------:|:------:|:------:|:-------:|
 | `{02-21}` | `{22}` | `{23}` | `{00}`  | 
-
-
-
 
