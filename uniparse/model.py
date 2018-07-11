@@ -131,14 +131,22 @@ class Model(object):
 
         return predictions
 
-    def train(self, train: List, dev_file: str, dev: List, epochs: int, batch_size: int, callbacks: List = None):
+    def train(self, train: List, dev_file: str, dev: List, epochs: int, batch_size: int, callbacks: List = None, patience=-1):
         callbacks = callbacks if callbacks else []  # This is done to avoid using the same list.
+        
+        if patience > -1:
+            print(f">...Training with patience {patience} for less than {epochs} epochs")
+        else: 
+            print(f">...Training without patience for exactly {epochs} epochs")
+
+        running_patience=patience
 
         training_data = self._batch_data(train, strategy=self._batch_strategy, scale=batch_size, shuffle=True)
 
         backend = self.backend
         _, samples = training_data
         global_step = 0
+        max_dev_uas=0.0
         for epoch in range(1, epochs+1):
             start = time.time()
 
@@ -160,7 +168,7 @@ class Model(object):
                 mask = np.greater(words, self._vocab.ROOT)
                 num_tokens = int(np.sum(mask))
 
-                """ this is necesary for satisfy compatibility with pytorch """
+                """ this is necessary for satisfy compatibility with pytorch """
                 words = backend.input_tensor(words, dtype="int")
                 postags = backend.input_tensor(tags, dtype="int")
                 lemmas = backend.input_tensor(lemmas, dtype="int")
@@ -205,6 +213,19 @@ class Model(object):
                 global_step += 1
 
             print()
+            
+            if patience > -1:
+                if max_dev_uas > no_punct_dev_uas:
+                    max_dev_uas = no_punct_dev_uas
+                    running_patience-=1
+                    print(f">> Patience decremented to {running_patience}")
+                else:
+                    running_patience=patience
+                    print(f">> Patience incremented to {running_patience}")
+                
+                if running_patience==0:
+                    break    
+            
             print(f">> Completed epoch {epoch} in ", time.time()-start)
             metrics = self.evaluate(dev_file, dev, batch_size)
             no_punct_dev_uas = metrics["nopunct_uas"]
