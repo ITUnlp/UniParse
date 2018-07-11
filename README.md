@@ -30,7 +30,7 @@ python setup.py build_ext --inplace
 Installation of [tensorflow](https://www.tensorflow.org/install/) for using tensorboard is optional.
 
 ## Running included models
-UniParse includes two recent neural dependency parsers, namely the models by [Kiperwasser & Goldberg](https://arxiv.org/pdf/1603.04351.pdf) with either dynet or pytorch backend, and [Dozat and Manning](https://arxiv.org/pdf/1611.01734.pdf) with dynet backend. For running these we suggesting inspecting the run_* implementation and let 
+UniParse includes two recent neural dependency parsers, namely the models by [Kiperwasser and Goldberg (2016)](https://arxiv.org/pdf/1603.04351.pdf) with either dynet or pytorch backend, and [Dozat and Manning (2017)](https://arxiv.org/pdf/1611.01734.pdf) with dynet backend. For running these we suggesting inspecting the run_* implementation and let 
 
 ```
 python run_kiperwasser.py \
@@ -49,7 +49,7 @@ Arguments surrounded by parentheses are optional. Note that many more arguments 
 ## Included models performance
 | Model                          |   Language    |   UAS wp.   |   LAS wp.   |   UAS np.   |   LAS np.  |
 | ------------------------------ | ------------- | ----------- | ----------- | ----------- | -----------|
-| Kiperwasser & Goldberg (2017)  |               |             |             |             |            |
+| Kiperwasser & Goldberg (2016)  |               |             |             |             |            |
 |                                |  Danish (UD)  | 83.18%      | 79.57%      | 83.67%      | 79.47%     |
 |                                |  English (UD) | 87.06%      | 84.68%      | 88.08%      | 85.43%     |
 |                                | English (PTB) | 92.56%      | 91.17%      | 93.14%      | 91.57%     |
