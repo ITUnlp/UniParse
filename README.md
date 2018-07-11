@@ -1,10 +1,14 @@
 # UniParse
 
-UniParse: A universal graph-based parsing framework, for quick prototyping and comparison of components.  [ADD INTRODUCTORY STUFF--NATALIE] If you use UniParse, please cite
+UniParse: A universal graph-based modular parsing framework, for quick prototyping and comparison of parser components.  
 
-Varab, Daniel and Natalie Schluter. (2018). UniParse: A universal graph-based parsing framework. Complete this reference!!
+UniParse is a collection of helpful tools and implementations to assist the process of rapidly developing efficient graph based dependency parsers.  Backends for UniParse are currently dynet or pytorch.
 
-[ADD INTRO STUFF--NATALIE]
+This document describes how to install and use UniParse and how to develop your own new parser using the UniParse framework.
+
+If you use UniParse, please cite the following publication, where you can also find further details:
+
+**Varab, Daniel and Natalie Schluter. (2018).** [*UniParse: A universal graph-based parsing framework.*](archivelinkhere)
 
 ## Installing
 
@@ -17,8 +21,6 @@ pip install numpy, scipy, sklearn
 # pip install torch>=0.4
 ```
 
-[ADD INSTALL OVERVIEW STUFF HERE--NATALIE]
-
 ## Compiling Decoders
 ```
 # run from root directory
@@ -28,7 +30,7 @@ python setup.py build_ext --inplace
 Installation of [tensorflow](https://www.tensorflow.org/install/) for using tensorboard is optional.
 
 ## Running included models
-UniParse includes two recent neural dependency parsers, namely the models by [Kiperwasser & Goldberg](https://arxiv.org/pdf/1603.04351.pdf), and [Dozat and Manning](https://arxiv.org/pdf/1611.01734.pdf). For running these we suggesting inspecting the run_* implementation and let 
+UniParse includes two recent neural dependency parsers, namely the models by [Kiperwasser & Goldberg](https://arxiv.org/pdf/1603.04351.pdf) with either dynet or pytorch backend, and [Dozat and Manning](https://arxiv.org/pdf/1611.01734.pdf) with dynet backend. For running these we suggesting inspecting the run_* implementation and let 
 
 ```
 python run_kiperwasser.py \
@@ -62,9 +64,6 @@ Arguments surrounded by parentheses are optional. Note that many more arguments 
 
 with `wp.` denoting 'with punctuation', and `np.` 'no punctuation'. No punctuation follows the rule of excluding modifier tokens consisting entirely of unicode punctuation characters; this option is standard in current research.
 
-## Description
-[MOVE THIS--NATALIE]
-UniParse is a collection of helpful tools and implementations to assist the process of rapidly developing efficient graph based dependency parsers.
 
 ## Components
 Below we describe a brief introduction to each of the core components of the uniparse package, followed by a guide to how to stick them together.
