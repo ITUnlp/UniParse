@@ -8,7 +8,7 @@ from uniparse.types import Parser
 
 def Dense(model_parameters, input_dim, hidden_dim, activation, use_bias):
     import dynet as dy
-    """ TODO """
+    """ Typical dense layer as required without dropout by Kiperwasser and Goldberg (2016) """
     w = model_parameters.add_parameters((hidden_dim, input_dim))
     b = model_parameters.add_parameters((hidden_dim,)) if use_bias else None
 
@@ -26,7 +26,7 @@ def Dense(model_parameters, input_dim, hidden_dim, activation, use_bias):
 
 
 class DependencyParser(Parser):
-    """  Implementation of kipperwasser and goldbergs 2017 uniparse_paper  """
+    """  Implementation of Kiperwasser and Goldbergs (2016) bilstm parser paper  """
     def __init__(self, vocab):
         params = dy.ParameterCollection()
 
@@ -89,9 +89,7 @@ class DependencyParser(Parser):
         if training_mode:
             c = self._propability_map(word_ids, self.i2c)
             drop_mask = np.greater(0.25/(c+0.25), np.random.rand(*word_ids.shape))
-            word_ids = np.where(drop_mask, self._vocab.OOV, word_ids)  # replace with UNK / OOV
-            # drop_mask = np.greater(c/(0.25+c), np.random.rand(*word_ids.shape))
-            # word_ids = np.where(drop_mask, word_ids, self._vocab.OOV)  # replace with UNK / OOV
+            word_ids = np.where(drop_mask, self._vocab.OOV, word_ids)  
 
         word_embs = [dy.lookup_batch(self.wlookup, word_ids[:, i]) for i in range(n)]
         upos_embs = [dy.lookup_batch(self.tlookup, upos_ids[:, i]) for i in range(n)]
