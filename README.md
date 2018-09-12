@@ -8,7 +8,7 @@ This document describes how to install and use UniParse and how to develop your 
 
 If you use UniParse, please cite the following publication, where you can also find further details:
 
-**Varab, Daniel and Natalie Schluter. (2018).** [*UniParse: A universal graph-based parsing framework.*](archivelinkhere)
+**Varab, Daniel and Natalie Schluter. (2018).** [*UniParse: A universal graph-based parsing framework.*](https://arxiv.org/pdf/1807.04053.pdf)
 
 ## Installing
 
