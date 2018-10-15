@@ -26,6 +26,7 @@ argparser.add_argument("--epochs", dest="epochs", type=int, default=283)
 argparser.add_argument("--tb_dest", dest="tb_dest", required=False)
 argparser.add_argument("--vocab_dest", dest="vocab_dest")
 argparser.add_argument("--model_dest", dest="model_dest", required=True)
+argparser.add_argument("--no_variance_normalise_embs", dest="no_variance_normalise_embs", required=True, default=False, action='store_true')
 
 argparser.add_argument("--lstm_layers", dest="lstm_layers", type=int, default=3)
 argparser.add_argument("--no_orth_init", dest="no_orth_init", action='store_true')
@@ -88,7 +89,7 @@ if arguments.dropout < 0.33:
 
 vocab = Vocabulary()
 vocab = vocab.fit(train_file, pretrained_embeddings_file, min_occur_count)
-embs = vocab.load_embedding(normalize=True) if arguments.embedding_file else None
+embs = vocab.load_embedding(variance_normalize=True) if arguments.embedding_file else None
 
 # save vocab for reproducing later
 if vocab_destination:

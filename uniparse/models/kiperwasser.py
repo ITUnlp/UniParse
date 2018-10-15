@@ -27,7 +27,7 @@ def Dense(model_parameters, input_dim, hidden_dim, activation, use_bias):
 
 class DependencyParser(Parser):
     """  Implementation of Kiperwasser and Goldbergs (2016) bilstm parser paper  """
-    def __init__(self, vocab):
+    def __init__(self, vocab, embs, no_update_embeddings):
         params = dy.ParameterCollection()
 
         upos_dim = 25
@@ -41,7 +41,15 @@ class DependencyParser(Parser):
         self.label_count = vocab.label_count
         self._vocab = vocab
 
-        self.wlookup = params.add_lookup_parameters((self.word_count, word_dim))
+        if embs is not None:
+            self.embs=True
+            self.wlookup = params.add_lookup_parameters(embs.shape, update=not no_update_embeddings)
+            self.wlookup.init_from_array(embs)
+            #project to 100 dim
+            self.pretrained_projection = Dense(params, embs.shape[1], word_dim, activation=None, use_bias=False)
+        else:
+            self.embs=False
+            self.wlookup = params.add_lookup_parameters((self.word_count, word_dim))
         self.tlookup = params.add_lookup_parameters((self.upos_count, upos_dim))
 
         self.deep_bilstm = dy.BiRNNBuilder(2, word_dim+upos_dim, bilstm_out, params, dy.VanillaLSTMBuilder)
@@ -92,6 +100,8 @@ class DependencyParser(Parser):
             word_ids = np.where(drop_mask, self._vocab.OOV, word_ids)  
 
         word_embs = [dy.lookup_batch(self.wlookup, word_ids[:, i]) for i in range(n)]
+        if self.embs:
+            word_embs = [self.pretrained_projection(w) for w in word_embs]
         upos_embs = [dy.lookup_batch(self.tlookup, upos_ids[:, i]) for i in range(n)]
         words = [dy.concatenate([w, p]) for w, p in zip(word_embs, upos_embs)]
         word_exprs = self.deep_bilstm.transduce(words)

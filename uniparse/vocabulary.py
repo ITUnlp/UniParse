@@ -130,7 +130,7 @@ class Vocabulary(object):
                 self._word2id[word] = offset + counter
                 counter += 1
 
-    def load_embedding(self, normalize=True):
+    def load_embedding(self, variance_normalize=False):
         """ load embeddings """
 
         assert self._pret_file is not None, "no embedding to load...."
@@ -146,7 +146,6 @@ class Vocabulary(object):
 
                 word, vector = line[0], line[1:]
                 word_id = self._word2id[word]
-                embs[word_id] = vector
 
             print(">> Done loading embeddings (%d)" % i)
 
@@ -156,7 +155,7 @@ class Vocabulary(object):
                 embs[idx] = np.zeros(emb_size)
         pret_embs = np.array(embs, dtype=np.float32)
 
-        if normalize:
+        if variance_normalize: 
             pret_embs /= np.std(pret_embs)
 
         return pret_embs

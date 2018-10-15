@@ -131,7 +131,7 @@ class Model(object):
 
         return predictions
 
-    def train(self, train: List, dev_file: str, dev: List, epochs: int, batch_size: int, callbacks: List = None, patience=-1):
+    def train(self, train: List, dev_file: str, dev: List, epochs: int, batch_size: int, callbacks: List = None, patience:int = -1):
         callbacks = callbacks if callbacks else []  # This is done to avoid using the same list.
         
         if patience > -1:
@@ -214,6 +214,15 @@ class Model(object):
 
             print()
             
+            print(f">> Completed epoch {epoch} in ", time.time()-start)
+            metrics = self.evaluate(dev_file, dev, batch_size)
+            no_punct_dev_uas = metrics["nopunct_uas"]
+            no_punct_dev_las = metrics["nopunct_las"]
+            punct_dev_uas = metrics["uas"]
+            punct_dev_las = metrics["las"]
+            print(f">> UAS (wo. punct) {no_punct_dev_uas:.{5}}\t LAS (wo. punct) {no_punct_dev_las:.{5}}")
+            print(f">> UAS (w. punct) {punct_dev_uas:.{5}}\t LAS (w. punct) {punct_dev_las:.{5}}")
+
             if patience > -1:
                 if max_dev_uas > no_punct_dev_uas:
                     max_dev_uas = no_punct_dev_uas
@@ -226,15 +235,6 @@ class Model(object):
                 if running_patience==0:
                     break    
             
-            print(f">> Completed epoch {epoch} in ", time.time()-start)
-            metrics = self.evaluate(dev_file, dev, batch_size)
-            no_punct_dev_uas = metrics["nopunct_uas"]
-            no_punct_dev_las = metrics["nopunct_las"]
-
-            punct_dev_uas = metrics["uas"]
-            punct_dev_las = metrics["las"]
-            print(f">> UAS (wo. punct) {no_punct_dev_uas:.{5}}\t LAS (wo. punct) {no_punct_dev_las:.{5}}")
-            print(f">> UAS (w. punct) {punct_dev_uas:.{5}}\t LAS (w. punct) {punct_dev_las:.{5}}")
 
             batch_end_info = {
                 "dev_uas": no_punct_dev_uas,

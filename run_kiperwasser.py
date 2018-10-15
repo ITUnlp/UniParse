@@ -13,12 +13,23 @@ parser.add_argument("--epochs", dest="epochs", type=int, default=30)
 parser.add_argument("--tb_dest", dest="tb_dest")
 parser.add_argument("--vocab_dest", dest="vocab_dest")
 parser.add_argument("--model_dest", dest="model_dest", required=True)
+parser.add_argument("--emb", dest="emb", help="pre-trained embeddings file name", required=False)
+parser.add_argument("--no_update_pretrained_emb", dest="no_update_pretrained_emb", help="don't update the pretrained embeddings during training", default=False, action='store_true')
+parser.add_argument("--patience", dest='patience', type=int, default=-1)
+parser.add_argument("--dev_mode", dest='dev_mode', default=False, help='small subset of training examples, for code testing', action='store_true')
 
 arguments, unknown = parser.parse_known_args()
 
 n_epochs = arguments.epochs
+
 vocab = Vocabulary()
-vocab = vocab.fit(arguments.train)
+if arguments.emb != None:
+    vocab = vocab.fit(arguments.train, arguments.emb)
+    embs = vocab.load_embedding()
+    print('shape',embs.shape)
+else:
+    vocab = vocab.fit(arguments.train)
+    embs = None
 
 # save vocab for reproducability later
 if arguments.vocab_dest:
@@ -28,11 +39,13 @@ if arguments.vocab_dest:
 # prep data
 print(">> Loading in data")
 training_data = vocab.tokenize_conll(arguments.train)
+if arguments.dev_mode:
+    training_data=training_data[:100]
 dev_data = vocab.tokenize_conll(arguments.dev)
 test_data = vocab.tokenize_conll(arguments.test)
 
 # instantiate model
-model = DependencyParser(vocab)
+model = DependencyParser(vocab, embs, arguments.no_update_pretrained_emb)
 
 callbacks = []
 tensorboard_logger = None
@@ -46,7 +59,7 @@ callbacks.append(save_callback)
 
 # prep params
 parser = Model(model, decoder="eisner", loss="kiperwasser", optimizer="adam", strategy="bucket", vocab=vocab)
-parser.train(training_data, arguments.dev, dev_data, epochs=n_epochs, batch_size=32, callbacks=callbacks)
+parser.train(training_data, arguments.dev, dev_data, epochs=n_epochs, batch_size=32, callbacks=callbacks, patience=arguments.patience)
 parser.load_from_file(arguments.model_dest)
 
 metrics = parser.evaluate(arguments.test, test_data, batch_size=32)

@@ -1,4 +1,7 @@
-""" setup script """
+""" 
+setup script 
+run 'python setup.py build_ext --inplace' from the root directory
+"""
 import os
 import platform
 import numpy as np
