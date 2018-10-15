@@ -43,10 +43,10 @@ class DependencyParser(Parser):
 
         if embs is not None:
             self.embs=True
+            word_dim=embs.shape[1] #replacing default 100 dim size
+            bilstm_out = (word_dim+upos_dim) * 2  # 250
             self.wlookup = params.add_lookup_parameters(embs.shape, update=not no_update_embeddings)
             self.wlookup.init_from_array(embs)
-            #project to 100 dim
-            self.pretrained_projection = Dense(params, embs.shape[1], word_dim, activation=None, use_bias=False)
         else:
             self.embs=False
             self.wlookup = params.add_lookup_parameters((self.word_count, word_dim))
@@ -100,8 +100,6 @@ class DependencyParser(Parser):
             word_ids = np.where(drop_mask, self._vocab.OOV, word_ids)  
 
         word_embs = [dy.lookup_batch(self.wlookup, word_ids[:, i]) for i in range(n)]
-        if self.embs:
-            word_embs = [self.pretrained_projection(w) for w in word_embs]
         upos_embs = [dy.lookup_batch(self.tlookup, upos_ids[:, i]) for i in range(n)]
         words = [dy.concatenate([w, p]) for w, p in zip(word_embs, upos_embs)]
         word_exprs = self.deep_bilstm.transduce(words)
