@@ -45,8 +45,10 @@ class DependencyParser(Parser):
             self.embs=True
             word_dim=embs.shape[1] #replacing default 100 dim size
             bilstm_out = (word_dim+upos_dim) * 2  # 250
-            self.wlookup = params.add_lookup_parameters(embs.shape, update=not no_update_embeddings)
+            self.wlookup = params.add_lookup_parameters(embs.shape) 
             self.wlookup.init_from_array(embs)
+            if no_update_embeddings:
+                self.wlookup.set_updated(False)
         else:
             self.embs=False
             self.wlookup = params.add_lookup_parameters((self.word_count, word_dim))
