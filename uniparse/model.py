@@ -236,8 +236,8 @@ class Model(object):
 
         return predictions
 
-    def save_to_file(self, filename) -> None:
+    def save_to_file(self, filename):
         self._parser.save_to_file(filename)
 
-    def load_from_file(self, filename) -> None:
+    def load_from_file(self, filename):
         self._parser.load_from_file(filename)
