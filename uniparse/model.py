@@ -187,11 +187,11 @@ class Model(object):
 
             print()
 
-        print(f">> Finished at epoch {epoch}")
+        print(">> Finished at epoch %d" % epoch)
 
     def evaluate(self, test_file, test_data):
         stripped_filename = ntpath.basename(test_file)
-        output_file = f"{self._model_uid}_on_{stripped_filename}"
+        output_file = "%s_on_%s" % (self._model_uid, stripped_filename)
 
         # run parser on data
         predictions = self.run(test_data)
