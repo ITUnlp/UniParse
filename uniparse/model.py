@@ -89,7 +89,7 @@ class Model(object):
         else:
             return input_decoder
 
-    def _get_loss_functions(self, input_loss: Union[str, Tuple[Any, Any]]):
+    def _get_loss_functions(self, input_loss):
         if isinstance(input_loss, str):
             loss = self.backend.loss
             loss_options = {
@@ -189,7 +189,7 @@ class Model(object):
 
         print(f">> Finished at epoch {epoch}")
 
-    def evaluate(self, test_file: str, test_data: List):
+    def evaluate(self, test_file, test_data):
         stripped_filename = ntpath.basename(test_file)
         output_file = f"{self._model_uid}_on_{stripped_filename}"
 
@@ -206,7 +206,7 @@ class Model(object):
 
         return metrics
 
-    def run(self, samples: List):
+    def run(self, samples):
         indices, batches = samples
         
         backend = self.backend
@@ -236,8 +236,8 @@ class Model(object):
 
         return predictions
 
-    def save_to_file(self, filename: str) -> None:
+    def save_to_file(self, filename) -> None:
         self._parser.save_to_file(filename)
 
-    def load_from_file(self, filename: str) -> None:
+    def load_from_file(self, filename) -> None:
         self._parser.load_from_file(filename)

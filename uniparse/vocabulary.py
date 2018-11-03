@@ -161,7 +161,7 @@ class Vocabulary(object):
 
         return pret_embs
 
-    def tokenize_conll(self, file: str):
+    def tokenize_conll(self, file):
         sentences = self._read_conll(file, tokenize=True)
         return sentences
 
@@ -179,7 +179,7 @@ class Vocabulary(object):
 
         return word, lemma, tag, head, rel, chars
 
-    def _read_conll(self, input_file: str, tokenize: bool = True):
+    def _read_conll(self, input_file, tokenize = True):
         word_root = self.ROOT
         lemma_root = self.ROOT
         tag_root = self.ROOT

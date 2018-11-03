@@ -13,7 +13,7 @@ import sklearn.utils
 from sklearn.cluster import KMeans
 
 
-def gen_pad_3d(x: Iterable, padding_token: int):
+def gen_pad_3d(x: Iterable, padding_token):
     if not isinstance(x, list):
         x = list(x)
 
@@ -30,7 +30,7 @@ def gen_pad_3d(x: Iterable, padding_token: int):
     return buff
 
 
-def gen_pad_2d(x: Iterable, padding_token: int):
+def gen_pad_2d(x: Iterable, padding_token):
     if not isinstance(x, list):
         x = list(x)
 
