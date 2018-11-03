@@ -33,7 +33,7 @@ class ModelSaveCallback(Callback):
 
     def on_epoch_end(self, epoch, info):
         dev_uas = info["dev_uas"]
-        model: Parser = info["model"]
+        model = info["model"]
         global_step = info["global_step"]
 
         if dev_uas > self.best_uas:
