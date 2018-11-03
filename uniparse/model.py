@@ -172,8 +172,8 @@ class Model(object):
 
             punct_dev_uas = metrics["uas"]
             punct_dev_las = metrics["las"]
-            print(f">> UAS (wo. punct) {no_punct_dev_uas:.{5}}\t LAS (wo. punct) {no_punct_dev_las:.{5}}")
-            print(f">> UAS (w. punct) {punct_dev_uas:.{5}}\t LAS (w. punct) {punct_dev_las:.{5}}")
+            print(">> UAS (wo. punct) %0.5f\t LAS (wo. punct) %0.5f" % (no_punct_dev_uas, no_punct_dev_las))
+            print(">> UAS (w. punct) %0.5f\t LAS (w. punct) %0.5f" % (punct_dev_uas, punct_dev_las))
 
             batch_end_info = {
                 "dev_uas": no_punct_dev_uas,
