@@ -121,6 +121,7 @@ class BaseParser(Parser):
         self.tag_embs = pc.lookup_parameters_from_numpy(random_np_tag_emb)
 
         lstm = orthonormal_VanillaLSTMBuilder if orthogonal_init else dy.VanillaLSTMBuilder
+
         self.LSTM_builders = []
         f = lstm(1, word_dims+tag_dims, lstm_hiddens, pc)
         b = lstm(1, word_dims+tag_dims, lstm_hiddens, pc)
@@ -198,9 +199,7 @@ class BaseParser(Parser):
             arc_targets = arc_targets.T
             targets_1D = dynet_flatten_numpy(arc_targets)
 
-
-        batch_size = word_inputs.shape[1]
-        seq_len = word_inputs.shape[0]
+        seq_len, batch_size = word_inputs.shape
 
         mask = np.greater(word_inputs, self._vocab.ROOT).astype(np.float32)
         
@@ -221,11 +220,16 @@ class BaseParser(Parser):
             emb_inputs = [dy.concatenate([w, pos]) for w, pos in zip(word_embs, tag_embs)]
 
         top_recur = dy.concatenate_cols(biLSTM(self.LSTM_builders, emb_inputs, batch_size, self.dropout_lstm_input if is_train else 0., self.dropout_lstm_hidden if is_train else 0.))
+
         if is_train:
             top_recur = dy.dropout_dim(top_recur, 1, self.dropout_mlp)
 
-        W_dep, b_dep = dy.parameter(self.mlp_dep_W), dy.parameter(self.mlp_dep_b)
-        W_head, b_head = dy.parameter(self.mlp_head_W), dy.parameter(self.mlp_head_b)
+        W_dep = self.mlp_dep_W
+        b_dep = self.mlp_dep_b
+
+        W_head = self.mlp_head_W
+        b_head = self.mlp_head_b
+
         dep, head = leaky_relu(dy.affine_transform([b_dep, W_dep, top_recur])), leaky_relu(dy.affine_transform([b_head, W_head, top_recur]))
         if is_train:
             dep, head= dy.dropout_dim(dep, 1, self.dropout_mlp), dy.dropout_dim(head, 1, self.dropout_mlp)
@@ -233,7 +237,7 @@ class BaseParser(Parser):
         dep_arc, dep_rel = dep[:self.mlp_arc_size], dep[self.mlp_arc_size:]
         head_arc, head_rel = head[:self.mlp_arc_size], head[self.mlp_arc_size:]
 
-        W_arc = dy.parameter(self.arc_W)
+        W_arc = self.arc_W
         arc_logits = bilinear(dep_arc, W_arc, head_arc, self.mlp_arc_size, seq_len, batch_size, num_outputs= 1, bias_x = True, bias_y = False)
         # (#head x #dep) x batch_size
 
@@ -241,7 +245,7 @@ class BaseParser(Parser):
         arc_preds = arc_preds if arc_preds.ndim == 2 else arc_preds[:, None]
         # seq_len x batch_size
         
-        W_rel = dy.parameter(self.rel_W)
+        W_rel = self.rel_W
         
         rel_logits = bilinear(dep_rel, W_rel, head_rel, self.mlp_rel_size, seq_len, batch_size, num_outputs = self._vocab.rel_size, bias_x = True, bias_y = True)
         # (#head x rel_size x #dep) x batch_size
@@ -277,7 +281,9 @@ class BaseParser(Parser):
             rel_predictions = rel_predictions.reshape(batch_size, seq_len)
             # batch_size x dep
 
-            return arc_predictions, rel_predictions, arc_logits, partial_rel_logits
+            loss = self.compute_loss(arc_logits, partial_rel_logits, arc_targets, rel_targets, mask)
+
+            return arc_predictions, rel_predictions, loss
         else:
             arc_predictions, rel_predictions = [], []
             for msk, arc_prob, rel_prob in zip(np.transpose(mask), arc_probs, rel_probs):
@@ -290,4 +296,4 @@ class BaseParser(Parser):
                 arc_predictions.append(arc_pred[:sent_len])
                 rel_predictions.append(rel_pred[:sent_len])
             
-            return arc_predictions, rel_predictions, None, None
+            return arc_predictions, rel_predictions, None

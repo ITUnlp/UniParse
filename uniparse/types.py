@@ -12,6 +12,9 @@ class Parser(object):
     def set_backend(self, backend):
         self._backend = backend
 
+    def set_loss_function(self, loss_function):
+        self.compute_loss = loss_function
+
     def get_backend_name(self):
         return self.backend_name
 

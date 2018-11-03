@@ -6,7 +6,10 @@ import dynet as dy
 from uniparse import Vocabulary, Model
 from uniparse.models.dozat import BaseParser
 from uniparse.types import Callback
-from uniparse.callbacks import TensorboardLoggerCallback, ModelSaveCallback
+from uniparse.callbacks import TensorboardLoggerCallback
+from uniparse.callbacks import ModelSaveCallback
+
+from uniparse.dataprovider import batch_by_buckets
 
 
 class UpdateParamsCallback(Callback):
@@ -117,15 +120,24 @@ parser = Model(
     model, decoder="cle", loss="crossentropy", optimizer=optimizer, strategy="scaled_batch", vocab=vocab)
 
 """ Prep data """
-training_data = vocab.tokenize_conll(arguments.train)
+# training_data = vocab.tokenize_conll(arguments.train)
+# dev_data = vocab.tokenize_conll(arguments.dev)
+# test_data = vocab.tokenize_conll(arguments.test)
+
+print(">> Loading in data")
+train_data = vocab.tokenize_conll(arguments.train)
 dev_data = vocab.tokenize_conll(arguments.dev)
 test_data = vocab.tokenize_conll(arguments.test)
 
-parser.train(training_data, dev_file, dev_data, epochs=n_epochs, batch_size=batch_scale, callbacks=callbacks)
+training_data = batch_by_buckets(train_data, batch_size=32, shuffle=True)
+dev_data = batch_by_buckets(dev_data, batch_size=32, shuffle=True)
+test_data = batch_by_buckets(test_data, batch_size=32, shuffle=False)
+
+parser.train(training_data, dev_file, dev_data, epochs=n_epochs, callbacks=callbacks)
 
 parser.load_from_file(model_destination)
 
-metrics = parser.evaluate(arguments.test, test_data, batch_size=batch_scale)
+metrics = parser.evaluate(arguments.test, test_data)
 test_UAS = metrics["nopunct_uas"]
 test_LAS = metrics["nopunct_las"]
 

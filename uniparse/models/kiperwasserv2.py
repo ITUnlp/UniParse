@@ -11,9 +11,9 @@ def Dense(model_parameters, input_dim, hidden_dim, activation, use_bias):
     w = model_parameters.add_parameters((hidden_dim, input_dim))
     b = model_parameters.add_parameters((hidden_dim,)) if use_bias else None
 
-    def call(inputs):
+    def call(xs):
         """ todo """
-        output = w * inputs
+        output = w * xs
         if use_bias:
             output = output + b
         if activation:
@@ -21,7 +21,14 @@ def Dense(model_parameters, input_dim, hidden_dim, activation, use_bias):
 
         return output
 
-    return call
+    def apply(xs):
+        if isinstance(xs, list):
+            return [call(x) for x in xs]
+
+        else:
+            return call(xs)
+
+    return apply
 
 
 class DependencyParser(Parser):
@@ -76,27 +83,40 @@ class DependencyParser(Parser):
         return np.vectorize(dictionary.__getitem__)(matrix)
 
     def __call__(self, in_tuple):
-        (word_ids, upos_ids), (gold_arcs, gold_rels) = in_tuple        
+        (word_ids, upos_ids), (gold_arcs, gold_rels) = in_tuple
         return self.run(word_ids, upos_ids, gold_arcs, gold_rels)
 
     def run(self, word_ids, upos_ids, target_arcs, rel_targets):
         batch_size, n = word_ids.shape
 
-        training_mode = target_arcs is not None
+        train = target_arcs is not None
+
+        mask = np.greater(word_ids, self._vocab.ROOT)
 
         n = word_ids.shape[-1]
-        if training_mode:
+        if train:
             c = self._propability_map(word_ids, self.i2c)
             drop_mask = np.greater(0.25/(c+0.25), np.random.rand(*word_ids.shape))
             word_ids = np.where(drop_mask, self._vocab.OOV, word_ids)  
 
+        # encode and contextualize
         word_embs = [dy.lookup_batch(self.wlookup, word_ids[:, i]) for i in range(n)]
         upos_embs = [dy.lookup_batch(self.tlookup, upos_ids[:, i]) for i in range(n)]
         words = [dy.concatenate([w, p]) for w, p in zip(word_embs, upos_embs)]
         word_exprs = self.deep_bilstm.transduce(words)
 
-        word_h = [self.edge_head(word) for word in word_exprs]
-        word_m = [self.edge_modi(word) for word in word_exprs]
+        word_h = self.edge_head(word_exprs)
+        word_m = self.edge_modi(word_exprs)
+
+        # word_m = dy.concatenate_cols(word_m)
+        # print(word_m.dim(), word_h[0].dim(), self.edge_bias.dim())
+        # arc_edges = []
+        # for head_i in range(n):
+        #     arc_rep = dy.tanh(word_h[head_i] + word_m + self.edge_bias.expr())
+        #     arc_edges.append(arc_rep)
+
+        # arc_scores = self.e_scorer(arc_edges)
+        #arc_scores = dy.concatenate_cols(arc_scores)
 
         arc_edges = [
             dy.tanh(word_h[head] + word_m[modifier] + self.edge_bias.expr())
@@ -105,12 +125,12 @@ class DependencyParser(Parser):
         ]
 
         # edges scoring
-        arc_scores = [self.e_scorer(e) for e in arc_edges]
+        arc_scores = self.e_scorer(arc_edges)
         arc_scores = dy.concatenate_cols(arc_scores)
         arc_scores = dy.reshape(arc_scores, d=(n, n), batch_size=batch_size)
 
-        if training_mode:
-            # Loss augmented inference
+        # Loss augmented inference
+        if train:
             margin = np.ones((n, n, batch_size))
             for bi in range(batch_size):
                 for m in range(n):
@@ -120,22 +140,21 @@ class DependencyParser(Parser):
             margin_tensor = dy.inputTensor(margin, batched=True)
             arc_scores = arc_scores + margin_tensor
 
-        # take advantage of padding
-        sentence_lengths = n - np.argmax(word_ids[:, ::-1] > self._vocab.PAD, axis=1)
-        parsed_tree = self.decode(arc_scores, clip=sentence_lengths)
 
-        tree_for_rels = target_arcs if training_mode else parsed_tree
-
-        rel_heads = [self.label_head(word) for word in word_exprs]
-        rel_modifiers = [self.label_modi(word) for word in word_exprs]
+        rel_heads = self.label_head(word_exprs)
+        rel_modifiers = self.label_modi(word_exprs)
         stacked = dy.concatenate_cols(rel_heads)
         # (d, n) x batch_size
 
+        sentence_lengths = n - np.argmax(word_ids[:, ::-1] > self._vocab.PAD, axis=1)
+        parsed_tree = self.decode(arc_scores, sentence_lengths) # if target_arcs is None else target_arcs
+
         golds = []
-        tree_for_rels[:, 0] = 0  # root is currently negative. mask this
-        for column in tree_for_rels.T:
+        parsed_tree[:, 0] = 0  # root is currently negative. mask this
+        for column in parsed_tree.T:
             m_gold = dy.pick_batch(stacked, indices=column, dim=1)
             golds.append(m_gold)
+
 
         rel_arcs = []
         for modifier, gold in zip(rel_modifiers, golds):
@@ -143,21 +162,16 @@ class DependencyParser(Parser):
             rel_arcs.append(rel_arc)
 
         rel_arcs = dy.concatenate_cols(rel_arcs)
+        # ((d, n), batch_size)
         rel_scores = self.l_scorer(rel_arcs)
+
+        loss = self.compute_loss(arc_scores, rel_scores, target_arcs, rel_targets, mask) if train else None
 
         predicted_rels = rel_scores.npvalue().argmax(0)
         predicted_rels = predicted_rels[:, np.newaxis] if predicted_rels.ndim < 2 else predicted_rels
         predicted_rels = predicted_rels.T
 
-        if not training_mode:
-            arcs, rels = [], []
-            for i_tree, i_rel, i_n in zip(parsed_tree, predicted_rels, sentence_lengths):
-                arcs.append(i_tree[:i_n])
-                rels.append(i_rel[:i_n])
+        #parsed_tree = parsed_tree if not train else self.decode(arc_scores)
 
-            parsed_tree = arcs
-            predicted_rels = rels
-
-        return parsed_tree, predicted_rels, arc_scores, rel_scores
-
+        return parsed_tree, predicted_rels, loss
 

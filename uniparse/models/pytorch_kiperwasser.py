@@ -17,14 +17,12 @@ class BiRNN(nn.Module):
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, bidirectional=True)
 
     def forward(self, x):
-        # Set initial states
+        # Set initial cell states
         h0 = torch.zeros(self.num_layers * 2, x.size(0), self.hidden_size)
         c0 = torch.zeros(self.num_layers * 2, x.size(0), self.hidden_size)
 
-        # Forward propagate LSTM
         out, _ = self.lstm(x, (h0, c0))  # out: tensor of shape (batch_size, seq_length, hidden_size*2)
 
-        # Decode the hidden state of the last time step
         return out
 
 
