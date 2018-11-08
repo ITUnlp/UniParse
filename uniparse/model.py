@@ -105,20 +105,19 @@ class Model(object):
         else:
             return input_loss
 
-    def train(self, train, dev_file, dev, epochs, callbacks=None):
+    def train(self, train, dev_file, dev, epochs, callbacks=None, verbose=True):
         callbacks = callbacks if callbacks else []  # This is done to avoid using the same list.
 
         _, samples = train
 
         backend = self.backend
         global_step = 0
-        
         for epoch in range(1, epochs+1):
 
             samples = sklearn.utils.shuffle(samples)
 
-            pbar = tqdm(samples)
-            for x, y in pbar:
+            it_samples = tqdm(samples) if verbose else samples
+            for x, y in it_samples:
                 # renew graph
                 backend.renew_cg()
 
@@ -161,8 +160,9 @@ class Model(object):
                 # for callback in callbacks:
                 #     callback.on_batch_end(training_info)
 
-                metric_tuple = (epoch, epochs, float(arc_accuracy), float(rel_accuracy), loss_value)
-                pbar.set_description("[%d/%d] arc %.2f, rel %.2f, loss %.3f" % metric_tuple)
+                if verbose:
+                    metric_tuple = (epoch, epochs, float(arc_accuracy), float(rel_accuracy), loss_value)
+                    it_samples.set_description("[%d/%d] arc %.2f, rel %.2f, loss %.3f" % metric_tuple)
 
                 global_step += 1
 
@@ -170,10 +170,12 @@ class Model(object):
             no_punct_dev_uas = metrics["nopunct_uas"]
             no_punct_dev_las = metrics["nopunct_las"]
 
-            punct_dev_uas = metrics["uas"]
-            punct_dev_las = metrics["las"]
-            print(">> UAS (wo. punct) %0.5f\t LAS (wo. punct) %0.5f" % (no_punct_dev_uas, no_punct_dev_las))
-            print(">> UAS (w. punct) %0.5f\t LAS (w. punct) %0.5f" % (punct_dev_uas, punct_dev_las))
+            #punct_dev_uas = metrics["uas"]
+            #punct_dev_las = metrics["las"]
+            print("[%d] %0.5f, %0.5f " % (epoch, no_punct_dev_uas, no_punct_dev_las))
+            # print("UAS, LAS (wp.): %0.5f, %0.5f " % (punct_dev_uas, punct_dev_las))
+            #print(">> UAS (wo. punct) %0.5f\t LAS z(wo. punct) %0.5f" % (no_punct_dev_uas, no_punct_dev_las))
+            #print(">> UAS (w. punct) %0.5f\t LAS (w. punct) %0.5f" % (punct_dev_uas, punct_dev_las))
 
             batch_end_info = {
                 "dev_uas": no_punct_dev_uas,
@@ -184,8 +186,6 @@ class Model(object):
 
             for callback in callbacks:
                 callback.on_epoch_end(epoch, batch_end_info)
-
-            print()
 
         print(">> Finished at epoch %d" % epoch)
 

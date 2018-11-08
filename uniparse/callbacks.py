@@ -27,7 +27,7 @@ class ModelSaveCallback(Callback):
     def __init__(self, save_destination, save_after=0):
         self.save_destination = save_destination
         self.save_after = save_after
-        print("> saving model to", save_destination, "(after step %d)" % save_after)
+        #print("> saving model to", save_destination, "(after step %d)" % save_after)
         self.best_uas = -1
         self.best_epoch = -1
 
@@ -44,4 +44,4 @@ class ModelSaveCallback(Callback):
                 self.best_uas = dev_uas
                 self.best_epoch = epoch
                 model.save_to_file(self.save_destination)
-                print("saved to", self.save_destination)
+                #print("saved to", self.save_destination)

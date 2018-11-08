@@ -10,7 +10,7 @@ from uniparse.callbacks import ModelSaveCallback
 from uniparse.dataprovider import batch_by_buckets
 from uniparse.dataprovider import scale_batch
 
-from uniparse.models.kiperwasserv2 import DependencyParser
+from uniparse.models.varab import DependencyParser
 
 parser = argparse.ArgumentParser()
 
@@ -38,7 +38,7 @@ train_data = vocab.tokenize_conll(arguments.train)
 dev_data = vocab.tokenize_conll(arguments.dev)
 test_data = vocab.tokenize_conll(arguments.test)
 
-#train_batches = scale_batch(train_data, scale=4000, cluster_count=40, padding_token=vocab.PAD, shuffle=True)
+# train_batches = scale_batch(train_data, scale=4000, cluster_count=40, padding_token=vocab.PAD, shuffle=True)
 
 # idx, batches = train_batches
 # for (words, tags), (gold_arc, gold_rel) in batches:
@@ -46,7 +46,7 @@ test_data = vocab.tokenize_conll(arguments.test)
 
 train_batches = batch_by_buckets(train_data, batch_size=32, shuffle=True)
 dev_batches = batch_by_buckets(dev_data, batch_size=32, shuffle=True)
-#test_batches = batch_by_buckets(test_data, batch_size=32, shuffle=False)
+test_batches = batch_by_buckets(test_data, batch_size=32, shuffle=False)
 
 
 # instantiate model
@@ -58,8 +58,8 @@ callbacks = [save_callback]
 # prep params
 parser = Model(model, decoder="eisner", loss="hinge", optimizer="adam", vocab=vocab)
 
-parser.train(train_batches, arguments.dev, dev_batches, epochs=n_epochs, callbacks=callbacks, verbose=False)
-parser.load_from_file(arguments.model_dest)
+parser.train(train_batches, arguments.dev, dev_batches, epochs=n_epochs, callbacks=callbacks)
+# parser.load_from_file(arguments.model_dest)
 
 metrics = parser.evaluate(arguments.test, test_data)
 test_UAS = metrics["nopunct_uas"]
