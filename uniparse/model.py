@@ -193,7 +193,7 @@ class Model(object):
     def evaluate(self, test_file, test_data):
         #stripped_filename = ntpath.basename(test_file)
         _, stripped_filename = tempfile.mkstemp()
-        output_file = "%s_on_%s" % (self._model_uid, stripped_filename)
+        #output_file = "%s_on_%s" % (self._model_uid, stripped_filename)
 
         # run parser on data
         predictions = self.run(test_data)
