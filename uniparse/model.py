@@ -173,7 +173,7 @@ class Model(object):
 
             #punct_dev_uas = metrics["uas"]
             #punct_dev_las = metrics["las"]
-            print("[%d] %0.5f, %0.5f " % (epoch, no_punct_dev_uas, no_punct_dev_las))
+            print("[%d] %0.5f, %0.5f " % (epoch, no_punct_dev_uas, no_punct_dev_las), flush=True)
             # print("UAS, LAS (wp.): %0.5f, %0.5f " % (punct_dev_uas, punct_dev_las))
             #print(">> UAS (wo. punct) %0.5f\t LAS z(wo. punct) %0.5f" % (no_punct_dev_uas, no_punct_dev_las))
             #print(">> UAS (w. punct) %0.5f\t LAS (w. punct) %0.5f" % (punct_dev_uas, punct_dev_las))
