@@ -58,7 +58,7 @@ callbacks = [save_callback]
 # prep params
 parser = Model(model, decoder="eisner", loss="hinge", optimizer="adam", vocab=vocab)
 
-parser.train(train_batches, arguments.dev, dev_batches, epochs=1, callbacks=callbacks, verbose=False)
+parser.train(train_batches, arguments.dev, dev_batches, epochs=n_epochs, callbacks=callbacks, verbose=False)
 parser.load_from_file(arguments.model_dest)
 
 metrics = parser.evaluate(arguments.test, test_batches)
