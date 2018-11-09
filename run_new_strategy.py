@@ -46,7 +46,7 @@ test_data = vocab.tokenize_conll(arguments.test)
 
 train_batches = batch_by_buckets(train_data, batch_size=32, shuffle=True)
 dev_batches = batch_by_buckets(dev_data, batch_size=32, shuffle=True)
-#test_batches = batch_by_buckets(test_data, batch_size=32, shuffle=False)
+test_batches = batch_by_buckets(test_data, batch_size=32, shuffle=False)
 
 
 # instantiate model
