@@ -13,21 +13,18 @@ import sklearn.utils
 from sklearn.cluster import KMeans
 
 
-def gen_pad_3d(x: Iterable, padding_token):
-    if not isinstance(x, list):
-        x = list(x)
+def gen_pad_3d(x, padding_token):
+    batch_size = len(x)
+    max_sentence_length = max(len(s) for s in x)
+    max_word_length = max(len(word) for sentence in x for word in sentence)
 
-    max_word_len = max(len(word) for sentence in x for word in sentence)
-    max_seq_len = max(len(s) for s in x)
-
-    b, s = len(x), max_seq_len
-    buff = np.empty((b, s, max_word_len), dtype=np.int32)
-    buff.fill(padding_token)
+    buffer_shape = (batch_size, max_sentence_length, max_word_length)
+    buffer = np.full(buffer_shape, padding_token, dtype=np.int32)
     for i, sentence in enumerate(x):
         for j, char_ids in enumerate(sentence):
-            buff[i, j, :len(char_ids)] = char_ids
+            buffer[i, j, :len(char_ids)] = char_ids
 
-    return buff
+    return buffer
 
 
 def gen_pad_2d(x: Iterable, padding_token):
@@ -130,7 +127,59 @@ def batch_by_buckets(samples, batch_size, shuffle):
 
             x = list(zip(words, tags, gold_arcs, gold_rels))
             batch = np.array(x, dtype=np.int32)
-            batches.append(((batch[:,0,:], batch[:,1,:]), (batch[:,2,:], batch[:,3,:])))
+            batches.append(((batch[:,0,:], batch[:,1,:],), (batch[:,2,:], batch[:,3,:])))
+
+        batch_idx.extend(idx_splits)
+
+
+    if shuffle:
+        batch_idx, batches = sklearn.utils.shuffle(batch_idx, batches)
+
+    return batch_idx, batches
+
+
+def batch_by_buckets_with_chars(samples, batch_size, shuffle):
+    index_buckets = defaultdict(list)
+    sample_buckets = defaultdict(list)
+
+    # scan over dataset and add them to buckets of same length
+    for sample_id, sample in enumerate(samples):
+        words, *_ = sample
+        n = len(words)
+
+        index_buckets[n].append(sample_id)
+        sample_buckets[n].append(sample)
+
+    batches, batch_idx = [], []
+    for sen_len in sample_buckets.keys():
+        idxs = index_buckets[sen_len]
+        samples = sample_buckets[sen_len]
+
+        n_samples = len(idxs)
+        n_splits = math.ceil(n_samples / batch_size)
+        assert n_splits >= 1, "something went terribly wrong"
+
+        adjusted_batch_size = math.ceil(n_samples / n_splits)
+
+        batch_splits = split(samples, adjusted_batch_size)
+        idx_splits = split(idxs, adjusted_batch_size)
+        idx_splits = [np.array(e, dtype=np.int32) for e in idx_splits]
+
+        for s in batch_splits:
+            words, lemma, tags, gold_arcs, gold_rels, chars = zip(*s)
+
+            words = np.array(words, dtype=np.int32)
+            tags = np.array(tags, dtype=np.int32)
+
+            chars = gen_pad_3d(chars, padding_token=0)
+            
+            gold_arcs = np.array(gold_arcs, dtype=np.int32)
+            gold_rels = np.array(gold_rels, dtype=np.int32)
+
+            x = (words, tags, chars)
+            y = (gold_arcs, gold_rels)
+
+            batches.append((x,y))
 
         batch_idx.extend(idx_splits)
 

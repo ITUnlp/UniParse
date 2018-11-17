@@ -6,10 +6,6 @@ import tempfile
 
 from tqdm import tqdm
 
-from typing import *
-
-# from uniparse.dataprovider import ScaledBatcher
-# from uniparse.dataprovider import BucketBatcher
 
 try:
     import uniparse.decoders as decoders
@@ -135,10 +131,6 @@ class Model(object):
 
                 pred_arcs, pred_rels, loss = self._parser((x, y))
 
-                # arc_loss = self.arc_loss(arc_scores, None, gold_arcs, mask)
-                # rel_loss = self.rel_loss(rel_scores, None, gold_rels, mask)
-                #loss = arc_loss + rel_loss
-
                 loss_value = backend.get_scalar(loss)
                 loss.backward()
 
@@ -150,17 +142,6 @@ class Model(object):
                 rel_correct = np.equal(pred_rels, gold_rels).astype(np.float32) * mask
                 rel_accuracy = np.sum(rel_correct) / num_tokens
 
-                # training_info = {
-                #     "arc_accuracy": arc_accuracy,
-                #     "rel_accuracy": rel_accuracy,
-                #     "arc_loss": backend.get_scalar(arc_loss),
-                #     "rel_loss": backend.get_scalar(rel_loss),
-                #     "global_step": global_step
-                # }
-
-                # for callback in callbacks:
-                #     callback.on_batch_end(training_info)
-
                 if verbose:
                     metric_tuple = (epoch, epochs, float(arc_accuracy), float(rel_accuracy), loss_value)
                     it_samples.set_description("[%d/%d] arc %.2f, rel %.2f, loss %.3f" % metric_tuple)
@@ -170,13 +151,10 @@ class Model(object):
             metrics = self.evaluate(dev_file, dev)
             no_punct_dev_uas = metrics["nopunct_uas"]
             no_punct_dev_las = metrics["nopunct_las"]
-
             #punct_dev_uas = metrics["uas"]
             #punct_dev_las = metrics["las"]
+
             print("[%d] %0.5f, %0.5f " % (epoch, no_punct_dev_uas, no_punct_dev_las), flush=True)
-            # print("UAS, LAS (wp.): %0.5f, %0.5f " % (punct_dev_uas, punct_dev_las))
-            #print(">> UAS (wo. punct) %0.5f\t LAS z(wo. punct) %0.5f" % (no_punct_dev_uas, no_punct_dev_las))
-            #print(">> UAS (w. punct) %0.5f\t LAS (w. punct) %0.5f" % (punct_dev_uas, punct_dev_las))
 
             batch_end_info = {
                 "dev_uas": no_punct_dev_uas,
@@ -218,18 +196,10 @@ class Model(object):
         for idx, (x, y) in zip(indices, batches):
             backend.renew_cg()
 
-            words, tags = x
-
             # words = backend.input_tensor(words, dtype="int")
             # tags = backend.input_tensor(tags, dtype="int")
 
-            arc_preds, rel_preds, _ = self._parser(((words, tags), (None, None)))
-
-            #arc_scores = backend.to_numpy(arc_scores)
-            #arc_preds = [self._runtime_decoder(s) for s in arc_scores]
-            #predicted_rels = rel_scores.npvalue().argmax(0)
-            #predicted_rels = predicted_rels[:, np.newaxis] if predicted_rels.ndim < 2 else predicted_rels
-            #rel_preds = predicted_rels.T
+            arc_preds, rel_preds, _ = self._parser((x, (None, None)))
 
             outs = [(ind, arc[1:], rel[1:]) for ind, arc, rel in zip(idx, arc_preds, rel_preds)]
 

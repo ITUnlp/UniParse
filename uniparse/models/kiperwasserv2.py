@@ -5,6 +5,13 @@ import numpy as np
 
 from uniparse.types import Parser
 
+def dropout(xs, p):
+    if isinstance(xs, list):
+        return [dy.dropout(x, p) for x in xs]
+
+    else:
+        return dy.dropout(xs, p)
+
 
 def Dense(model_parameters, input_dim, hidden_dim, activation, use_bias):
     """ Typical dense layer as required without dropout by Kiperwasser and Goldberg (2016) """
@@ -36,7 +43,7 @@ class DependencyParser(Parser):
     def __init__(self, vocab):
         params = dy.ParameterCollection()
 
-        upos_dim = 25
+        upos_dim = 100
         word_dim = 100
         hidden_dim = 100
         bilstm_out = (word_dim+upos_dim) * 2  # 250
@@ -103,28 +110,21 @@ class DependencyParser(Parser):
         word_embs = [dy.lookup_batch(self.wlookup, word_ids[:, i]) for i in range(n)]
         upos_embs = [dy.lookup_batch(self.tlookup, upos_ids[:, i]) for i in range(n)]
         words = [dy.concatenate([w, p]) for w, p in zip(word_embs, upos_embs)]
+
+        words = dropout(words, 0.33)
         word_exprs = self.deep_bilstm.transduce(words)
 
         word_h = self.edge_head(word_exprs)
         word_m = self.edge_modi(word_exprs)
-
-        # word_m = dy.concatenate_cols(word_m)
-        # print(word_m.dim(), word_h[0].dim(), self.edge_bias.dim())
-        # arc_edges = []
-        # for head_i in range(n):
-        #     arc_rep = dy.tanh(word_h[head_i] + word_m + self.edge_bias.expr())
-        #     arc_edges.append(arc_rep)
-
-        # arc_scores = self.e_scorer(arc_edges)
-        #arc_scores = dy.concatenate_cols(arc_scores)
 
         arc_edges = [
             dy.tanh(word_h[head] + word_m[modifier] + self.edge_bias.expr())
             for modifier in range(n)
             for head in range(n)
         ]
-
+        
         # edges scoring
+        arc_edges = dropout(arc_edges, 0.33)
         arc_scores = self.e_scorer(arc_edges)
         arc_scores = dy.concatenate_cols(arc_scores)
         arc_scores = dy.reshape(arc_scores, d=(n, n), batch_size=batch_size)
@@ -163,6 +163,7 @@ class DependencyParser(Parser):
 
         rel_arcs = dy.concatenate_cols(rel_arcs)
         # ((d, n), batch_size)
+        rel_arcs = dropout(rel_arcs, 0.33)
         rel_scores = self.l_scorer(rel_arcs)
 
         loss = self.compute_loss(arc_scores, rel_scores, target_arcs, rel_targets, mask) if train else None

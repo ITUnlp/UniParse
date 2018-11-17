@@ -9,8 +9,9 @@ from uniparse.callbacks import ModelSaveCallback
 #from uniparse.dataprovider import ScaledBatcher
 from uniparse.dataprovider import batch_by_buckets
 from uniparse.dataprovider import scale_batch
+from uniparse.dataprovider import batch_by_buckets_with_chars
 
-from uniparse.models.varab import DependencyParser
+from uniparse.models.nguyen import DependencyParser
 
 parser = argparse.ArgumentParser()
 
@@ -20,12 +21,14 @@ parser.add_argument("--test", dest="test", help="Annotated CONLL dev test", meta
 parser.add_argument("--epochs", dest="epochs", type=int, default=30)
 parser.add_argument("--vocab_dest", dest="vocab_dest")
 parser.add_argument("--model_dest", dest="model_dest", required=True)
+parser.add_argument("--embs", dest="embs", required=True)
 
 arguments, unknown = parser.parse_known_args()
 
 n_epochs = arguments.epochs
 vocab = Vocabulary()
-vocab = vocab.fit(arguments.train)
+vocab = vocab.fit(arguments.train)#, pretrained_embeddings=arguments.embs)
+#embeddings = vocab.load_embedding()
 
 # save vocab for reproducability later
 if arguments.vocab_dest:
@@ -38,19 +41,12 @@ train_data = vocab.tokenize_conll(arguments.train)
 dev_data = vocab.tokenize_conll(arguments.dev)
 test_data = vocab.tokenize_conll(arguments.test)
 
-# train_batches = scale_batch(train_data, scale=4000, cluster_count=40, padding_token=vocab.PAD, shuffle=True)
-
-# idx, batches = train_batches
-# for (words, tags), (gold_arc, gold_rel) in batches:
-#      print(words.T.shape)
-
-train_batches = batch_by_buckets(train_data, batch_size=32, shuffle=True)
-dev_batches = batch_by_buckets(dev_data, batch_size=32, shuffle=True)
-test_batches = batch_by_buckets(test_data, batch_size=32, shuffle=False)
-
+train_batches = batch_by_buckets_with_chars(train_data, batch_size=32, shuffle=True)
+dev_batches = batch_by_buckets_with_chars(dev_data, batch_size=32, shuffle=True)
+test_batches = batch_by_buckets_with_chars(test_data, batch_size=32, shuffle=False)
 
 # instantiate model
-model = DependencyParser(vocab)
+model = DependencyParser(vocab, None)#, embs=embeddings)
 
 save_callback = ModelSaveCallback(arguments.model_dest)
 callbacks = [save_callback]
@@ -59,7 +55,7 @@ callbacks = [save_callback]
 parser = Model(model, decoder="eisner", loss="hinge", optimizer="adam", vocab=vocab)
 
 parser.train(train_batches, arguments.dev, dev_batches, epochs=n_epochs, callbacks=callbacks)
-# parser.load_from_file(arguments.model_dest)
+parser.load_from_file(arguments.model_dest)
 
 metrics = parser.evaluate(arguments.test, test_data)
 test_UAS = metrics["nopunct_uas"]
