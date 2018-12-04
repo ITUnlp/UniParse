@@ -5,12 +5,10 @@ from uniparse import Model
 from uniparse.callbacks import TensorboardLoggerCallback
 from uniparse.callbacks import ModelSaveCallback
 
-#from uniparse.dataprovider import BucketBatcher
-#from uniparse.dataprovider import ScaledBatcher
 from uniparse.dataprovider import batch_by_buckets
 from uniparse.dataprovider import scale_batch
 
-from uniparse.models.kiperwasserv2 import DependencyParser
+from uniparse.models.varab import DependencyParser
 
 parser = argparse.ArgumentParser()
 
@@ -38,16 +36,11 @@ train_data = vocab.tokenize_conll(arguments.train)
 dev_data = vocab.tokenize_conll(arguments.dev)
 test_data = vocab.tokenize_conll(arguments.test)
 
-#train_batches = scale_batch(train_data, scale=4000, cluster_count=40, padding_token=vocab.PAD, shuffle=True)
+#train_batches = scale_batch(train_data, scale=1000, cluster_count=40, padding_token=vocab.PAD, shuffle=True)
 
-# idx, batches = train_batches
-# for (words, tags), (gold_arc, gold_rel) in batches:
-#      print(words.T.shape)
-
-train_batches = batch_by_buckets(train_data, batch_size=32, shuffle=True)
+train_batches = batch_by_buckets(train_data, batch_size=64, shuffle=True)
 dev_batches = batch_by_buckets(dev_data, batch_size=32, shuffle=True)
 test_batches = batch_by_buckets(test_data, batch_size=32, shuffle=False)
-
 
 # instantiate model
 model = DependencyParser(vocab)

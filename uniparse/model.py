@@ -50,6 +50,7 @@ class Model(object):
         # extract loss functions
         self.arc_loss, self.rel_loss = self._get_loss_functions(loss)
         self._parser.set_loss_function(lambda a,b,c,d,e: self.arc_loss(a,None,c,e) + self.rel_loss(b,None,d,e))
+        self._parser.set_loss_object(self.backend.loss)
 
 
 
@@ -92,7 +93,7 @@ class Model(object):
             loss_options = {
                 # included for completeness
                 "crossentropy": (loss.crossentropy, loss.crossentropy),
-                "kiperwasser": (loss.hinge, loss.kipperwasser_hinge),
+                "kiperwasser": (loss.hinge, loss.kiperwasser_hinge),
                 "hinge": (loss.hinge, loss.hinge)
             }
             if input_loss not in loss_options:

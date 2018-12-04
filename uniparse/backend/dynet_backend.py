@@ -28,7 +28,7 @@ def generate_mask(shape, target):
 class _DynetLossFunctions(object):
 
     @staticmethod  # actually used for arcs on
-    def kipperwasser_loss(scores, preds, golds, mask):
+    def kiperwasser_loss(scores, preds, golds, mask, batch_size_norm=True):
         (h, m), batch_size = scores.dim()
 
         # given that scores are shaped ((h,m), batch)
@@ -56,12 +56,14 @@ class _DynetLossFunctions(object):
         gold_tensor = dy.pick_batch(scores, dynet_flatten(golds))
 
         loss = pred_tensor - gold_tensor
+        # loss = dy.bmax(dy.zeros(1, batch_size=m * batch_size), pred_tensor - gold_tensor)
         masked_loss = loss * incorrect_mask_tensor
 
-        return dy.sum_batches(masked_loss) / batch_size
+        return dy.sum_batches(masked_loss) / batch_size if batch_size_norm else dy.sum_batches(masked_loss)
+#        return dy.sum_batches(masked_loss) / batch_size
 
     @staticmethod
-    def crossentropy(x, pred_y, y, mask):
+    def crossentropy(x, pred_y, y, mask, batch_size_norm=True):
         # for now lets assume the inverted nature
         # => this means batch last, like (head,modi,batch_size) or (labels, modi, batch_size)
         num_tokens = int(np.sum(mask))
@@ -82,7 +84,7 @@ class _DynetLossFunctions(object):
         return arc_loss
 
     @staticmethod # actually used for labels
-    def kipperwasser_hinge(x, pred_y, y, mask):
+    def kiperwasser_hinge(x, pred_y, y, mask):
         (label_count, n), batch_size = x.dim()
 
         rel_losses = [dy.zeros(1)]
@@ -104,7 +106,7 @@ class _DynetLossFunctions(object):
         return rel_losses
 
     @staticmethod
-    def hinge(scores, preds, golds, mask, margin=1):
+    def hinge(scores, preds, golds, mask, margin=1, batch_size_norm=True):
         (h, m), batch_size = scores.dim()
 
         # given that scores are shaped ((h,m), batch)
@@ -142,7 +144,9 @@ class _DynetLossFunctions(object):
         loss = dy.bmax(dy.zeros(1, batch_size=m * batch_size), pred_tensor - gold_tensor)
         masked_loss = loss * incorrect_mask_tensor
 
-        return dy.sum_batches(masked_loss) / batch_size
+        # return dy.sum_batches(masked_loss) / batch_size
+        return dy.sum_batches(masked_loss) / batch_size if batch_size_norm else dy.sum_batches(masked_loss)
+
 
 
 class DynetBackend(object):
