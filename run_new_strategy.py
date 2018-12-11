@@ -8,7 +8,7 @@ from uniparse.callbacks import ModelSaveCallback
 from uniparse.dataprovider import batch_by_buckets
 from uniparse.dataprovider import scale_batch
 
-from uniparse.models.varab import DependencyParser
+from uniparse.models.kiperwasserv2 import DependencyParser
 
 parser = argparse.ArgumentParser()
 

@@ -190,3 +190,60 @@ class DynetBackend(object):
     def step(optimizer):
         optimizer.update()
 
+
+
+
+##############
+# New!!
+##############
+def tree_hinge_loss(scores, preds, golds, margin=1, batch_size_norm=True):
+    # can consider the following
+    # scores :: (n, batch_size = b*n)
+    # scores :: (n, n, batch_size = batch_size)
+    (h, m), batch_size = scores.dim()
+
+    # given that scores are shaped ((h,m), batch)
+    # we can reshape it to the shape ((h,), m*batch)
+    # where each batch is a modifier with
+    # respect to its heads
+    scores = dy.reshape(scores, (h,), batch_size=m * batch_size)
+
+    # this is merely to avoid the out of bounds problem
+    # root has its head = -1. trying to 'pick_batch' will
+    # will of course cause an issue
+    preds[:, 0] = golds[:, 0] = 0
+
+    # to satisfy dynet being column major as opposed to numpy / default encoding being row major
+    preds = dynet_flatten(preds.T)
+    golds = dynet_flatten(golds.T)
+
+    # create boolean mask. 1s for all the wrong values and 0s for all the correct values
+    # we will use this to mask out loss for correct predictions. This has the caviat that 
+    # if we predict correctly, there is no signal that the 2nd place is to close.
+    incorrect_mask = dynet_flatten(preds != golds)
+    incorrect_mask_tensor = dy.inputTensor(incorrect_mask, batched=True)
+
+    # masks for padding and root
+    pred_tensor = dy.pick_batch(scores, preds)
+    gold_tensor = dy.pick_batch(scores, golds)
+
+    pred_tree_scores = dy.reshape(pred_tensor, (m,), batch_size=batch_size)
+    gold_tree_scores = dy.reshape(gold_tensor, (m,), batch_size=batch_size)
+
+    # compute difference of tree scores
+    tree_diff = (dy.esum(pred_tree_scores)+margin) - dy.esum(gold_tree_scores)
+
+    # compute loss (by max'in the bastard over zero)
+    # if p+1 < b = no loss (cuz negative)
+    # if p+1 > b = loss (cuz positive)
+    zeros = dy.zeros(1, batch_size=m*batch_size)
+    loss = dy.bmax(zeros, tree_diff)
+
+    # mask out the predictions thats where indeed lo
+    # this doesn't work for the tree version??? no?!
+    #masked_loss = loss * incorrect_mask_tensor
+
+    if batch_size_norm:
+        return dy.sum_batches(masked_loss) / batch_size
+    else:
+        dy.sum_batches(masked_loss)
