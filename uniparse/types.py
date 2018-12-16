@@ -37,10 +37,10 @@ class Parser(object):
 
         return result
 
-    def save_to_file(self, filename: str) -> None:
+    def save_to_file(self, filename):
         raise NotImplementedError("You need to implement the save procedure your self")
 
-    def load_from_file(self, filename: str) -> None:
+    def load_from_file(self, filename):
         raise NotImplementedError("You need to implement the load procedure your self")
 
     def __call__(self, *args, **kwargs):

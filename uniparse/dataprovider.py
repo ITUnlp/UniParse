@@ -1,6 +1,4 @@
-from typing import Iterable
-from typing import Callable
-from typing import Dict
+from __future__ import division
 
 import math
 
@@ -27,7 +25,7 @@ def gen_pad_3d(x, padding_token):
     return buffer
 
 
-def gen_pad_2d(x: Iterable, padding_token):
+def gen_pad_2d(x, padding_token):
     if not isinstance(x, list):
         x = list(x)
 
@@ -42,6 +40,7 @@ def gen_pad_2d(x: Iterable, padding_token):
 
 
 def split(seq, batch_size):
+    batch_size = int(batch_size)
     return [
         seq[i:i + batch_size] 
         for i in range(0, len(seq), batch_size)
@@ -101,7 +100,7 @@ def batch_by_buckets(samples, batch_size, shuffle):
 
     # scan over dataset and add them to buckets of same length
     for sample_id, sample in enumerate(samples):
-        words, *_ = sample
+        words = sample[0]
         n = len(words)
 
         index_buckets[n].append(sample_id)
@@ -144,7 +143,7 @@ def batch_by_buckets_with_chars(samples, batch_size, shuffle):
 
     # scan over dataset and add them to buckets of same length
     for sample_id, sample in enumerate(samples):
-        words, *_ = sample
+        words = sample[0]
         n = len(words)
 
         index_buckets[n].append(sample_id)

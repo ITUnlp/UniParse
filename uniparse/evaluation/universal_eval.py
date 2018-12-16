@@ -1,12 +1,12 @@
 """ An alternative evaluation implementation/script to the conll17 which evaluates all features """
 
+import io
 import os
 import re
 import sys
 import time
 import functools
 import unicodedata
-from typing import *
 from subprocess import check_output
 
 from uniparse import Vocabulary
@@ -52,10 +52,10 @@ def invalid_line(line):
         return True
 
 
-def read_conll(filename) -> List[Sentence]:
+def read_conll(filename):
     sentences = []
     words, tags, heads, rels = [], [], [], []
-    with open(filename, encoding="UTF-8") as f:
+    with io.open(filename, encoding="UTF-8") as f:
         for line in f.readlines():
             # filter out comments and subphrase words
             if invalid_line(line):
@@ -171,23 +171,24 @@ def _flat_map(lst):
     return functools.reduce(lambda x, y: x + y, [list(result) for result in lst])
 
 
-def write_predictions_to_file(predictions: Iterable, reference_file: str, output_file: str, vocab: Vocabulary):
+def write_predictions_to_file(predictions, reference_file, output_file, vocab):
     indices, arcs, rels = zip(*predictions)
     flat_arcs = _flat_map(arcs)
     flat_rels = _flat_map(rels)
 
     idx = 0
-    with open(reference_file, encoding="UTF-8") as f, open(output_file, 'w', encoding="UTF-8") as fo:
-        for line in f.readlines():
-            if re.match(r'\d+\t', line):
-                info = line.strip().split()
-                assert len(info) == 10, 'Illegal line: %s' % line
-                info[6] = str(flat_arcs[idx])
-                info[7] = vocab.id2rel(flat_rels[idx])
-                fo.write('\t'.join(info) + '\n')
-                idx += 1
-            else:
-                fo.write(line)
+    with io.open(reference_file, encoding="UTF-8") as f:
+        with io.open(output_file, 'w', encoding="UTF-8") as fo:
+            for line in f.readlines():
+                if re.match(r'\d+\t', line):
+                    info = line.strip().split()
+                    assert len(info) == 10, 'Illegal line: %s' % line
+                    info[6] = str(flat_arcs[idx])
+                    info[7] = vocab.id2rel(flat_rels[idx])
+                    fo.write('\t'.join(info) + '\n')
+                    idx += 1
+                else:
+                    fo.write(line)
 
 
 def perl_eval(test_file, pred_file):

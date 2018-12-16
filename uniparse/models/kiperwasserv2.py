@@ -5,6 +5,8 @@ import numpy as np
 
 from uniparse.types import Parser
 
+from uniparse.backend.dynet_backend import tree_hinge_loss, _DynetLossFunctions
+
 def Dense(model_parameters, input_dim, hidden_dim, activation, use_bias):
     """ Typical dense layer as required without dropout by Kiperwasser and Goldberg (2016) """
     w = model_parameters.add_parameters((hidden_dim, input_dim))
@@ -69,13 +71,15 @@ class DependencyParser(Parser):
         self.l_scorer = Dense(params, hidden_dim, self.label_count, activation=None, use_bias=True)
         self.params = params
 
+        self.losses = _DynetLossFunctions()
+
     def parameters(self):
         return self.params
 
-    def save_to_file(self, filename: str) -> None:
+    def save_to_file(self, filename):
         self.params.save(filename)
 
-    def load_from_file(self, filename: str) -> None:
+    def load_from_file(self, filename):
         self.params.populate(filename)
 
     @staticmethod
@@ -110,11 +114,16 @@ class DependencyParser(Parser):
         word_h = self.edge_head(word_exprs)
         word_m = self.edge_modi(word_exprs)
 
-        arc_edges = [
-            dy.tanh(word_h[head] + word_m[modifier] + self.edge_bias.expr())
-            for modifier in range(n)
-            for head in range(n)
-        ]
+        arc_edges = []
+        for m in word_m:
+            for h in word_h:
+                edge = dy.tanh(h + m + self.edge_bias)
+                arc_edges.append(edge)
+        # arc_edges = [
+        #     dy.tanh(word_h[head] + word_m[modifier] + self.edge_bias.expr())
+        #     for modifier in range(n)
+        #     for head in range(n)
+        # ]
         
         # edges scoring
         arc_scores = self.e_scorer(arc_edges)
@@ -164,17 +173,18 @@ class DependencyParser(Parser):
         predicted_rels = predicted_rels.T
 
         if train:
-            arc_loss = self.loss_object.hinge(arc_scores, parsed_tree, target_arcs, mask, batch_size_norm=False)
+            arc_loss = self.loss_object.kiperwasser_loss(arc_scores, parsed_tree, target_arcs, mask, batch_size_norm=False)
             rel_loss = self.loss_object.hinge(rel_scores, predicted_rels, rel_targets, mask, batch_size_norm=False)
-            
-            #arc_loss = arc_loss / batch_size
-            #rel_loss = rel_loss / batch_size
-            #loss = arc_loss + rel_loss
-            loss = (arc_loss + rel_loss) / batch_size
+
+            # arc_loss = tree_hinge_loss(arc_scores, parsed_tree, target_arcs, mask, margin=0, batch_size_norm=False)
+            # rel_loss = self.loss_object.hinge(rel_scores, predicted_rels, rel_targets, mask, batch_size_norm=False)
+
+            arc_loss = arc_loss / batch_size
+            rel_loss = rel_loss / batch_size
+
+            loss = arc_loss + rel_loss
         else:
             loss = None
-
-        loss = self.compute_loss(arc_scores, rel_scores, target_arcs, rel_targets, mask) if train else None
 
         return parsed_tree, predicted_rels, loss
 

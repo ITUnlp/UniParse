@@ -38,7 +38,7 @@ test_data = vocab.tokenize_conll(arguments.test)
 
 #train_batches = scale_batch(train_data, scale=1000, cluster_count=40, padding_token=vocab.PAD, shuffle=True)
 
-train_batches = batch_by_buckets(train_data, batch_size=64, shuffle=True)
+train_batches = batch_by_buckets(train_data, batch_size=32, shuffle=True)
 dev_batches = batch_by_buckets(dev_data, batch_size=32, shuffle=True)
 test_batches = batch_by_buckets(test_data, batch_size=32, shuffle=False)
 

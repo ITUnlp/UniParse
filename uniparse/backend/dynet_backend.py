@@ -55,8 +55,8 @@ class _DynetLossFunctions(object):
         pred_tensor = dy.pick_batch(scores, dynet_flatten(preds))
         gold_tensor = dy.pick_batch(scores, dynet_flatten(golds))
 
-        loss = pred_tensor - gold_tensor
-        # loss = dy.bmax(dy.zeros(1, batch_size=m * batch_size), pred_tensor - gold_tensor)
+        #loss = pred_tensor - gold_tensor
+        loss = dy.bmax(dy.zeros(1, batch_size=m * batch_size), pred_tensor - gold_tensor)
         masked_loss = loss * incorrect_mask_tensor
 
         return dy.sum_batches(masked_loss) / batch_size if batch_size_norm else dy.sum_batches(masked_loss)
@@ -196,7 +196,7 @@ class DynetBackend(object):
 ##############
 # New!!
 ##############
-def tree_hinge_loss(scores, preds, golds, margin=1, batch_size_norm=True):
+def tree_hinge_loss(scores, preds, golds, mask, margin=1, batch_size_norm=True):
     # can consider the following
     # scores :: (n, batch_size = b*n)
     # scores :: (n, n, batch_size = batch_size)
@@ -220,23 +220,29 @@ def tree_hinge_loss(scores, preds, golds, margin=1, batch_size_norm=True):
     # create boolean mask. 1s for all the wrong values and 0s for all the correct values
     # we will use this to mask out loss for correct predictions. This has the caviat that 
     # if we predict correctly, there is no signal that the 2nd place is to close.
-    incorrect_mask = dynet_flatten(preds != golds)
-    incorrect_mask_tensor = dy.inputTensor(incorrect_mask, batched=True)
+    # incorrect_mask = dynet_flatten(preds != golds)
+    # incorrect_mask_tensor = dy.inputTensor(incorrect_mask, batched=True)
 
     # masks for padding and root
     pred_tensor = dy.pick_batch(scores, preds)
     gold_tensor = dy.pick_batch(scores, golds)
 
+    mask_tensor = dy.inputTensor(dynet_flatten(mask.T), batched=True)
+
+    # mask and add margin
+    pred_tensor = (pred_tensor + 1) * mask_tensor
+    gold_tensor = gold_tensor * mask_tensor
+
     pred_tree_scores = dy.reshape(pred_tensor, (m,), batch_size=batch_size)
     gold_tree_scores = dy.reshape(gold_tensor, (m,), batch_size=batch_size)
 
     # compute difference of tree scores
-    tree_diff = (dy.esum(pred_tree_scores)+margin) - dy.esum(gold_tree_scores)
+    tree_diff = dy.sum_elems(pred_tree_scores) - dy.sum_elems(gold_tree_scores)    
 
     # compute loss (by max'in the bastard over zero)
     # if p+1 < b = no loss (cuz negative)
     # if p+1 > b = loss (cuz positive)
-    zeros = dy.zeros(1, batch_size=m*batch_size)
+    zeros = dy.zeros(1, batch_size=batch_size)
     loss = dy.bmax(zeros, tree_diff)
 
     # mask out the predictions thats where indeed lo
@@ -244,6 +250,6 @@ def tree_hinge_loss(scores, preds, golds, margin=1, batch_size_norm=True):
     #masked_loss = loss * incorrect_mask_tensor
 
     if batch_size_norm:
-        return dy.sum_batches(masked_loss) / batch_size
+        return dy.sum_batches(loss) / batch_size
     else:
-        dy.sum_batches(masked_loss)
+        return dy.sum_batches(loss)

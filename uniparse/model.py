@@ -155,7 +155,8 @@ class Model(object):
             #punct_dev_uas = metrics["uas"]
             #punct_dev_las = metrics["las"]
 
-            print("[%d] %0.5f, %0.5f " % (epoch, no_punct_dev_uas, no_punct_dev_las), flush=True)
+            print("[%d] %0.5f, %0.5f " % (epoch, no_punct_dev_uas, no_punct_dev_las))
+            sys.stdout.flush() # for python 2.7 compatibility
 
             batch_end_info = {
                 "dev_uas": no_punct_dev_uas,

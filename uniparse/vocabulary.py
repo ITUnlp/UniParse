@@ -1,5 +1,6 @@
 from collections import Counter
 
+import io
 import re
 import pickle
 
@@ -96,7 +97,7 @@ class Vocabulary(object):
         tag_set = set()
         rel_set = set()
         char_set = set()
-        with open(input_file, encoding="UTF-8") as f:
+        with io.open(input_file, encoding="UTF-8") as f:
             for line in f.readlines():
                 if not validate_line(line):
                     continue
@@ -191,7 +192,7 @@ class Vocabulary(object):
         words, lemmas, tags, heads, rels, chars = \
             [word_root], [lemma_root], [tag_root], [root_head], [rel_root], [char_root]
 
-        with open(input_file, encoding="UTF-8") as f:
+        with io.open(input_file, encoding="UTF-8") as f:
             for line in f.readlines():
                 if not validate_line(line):
                     continue
