@@ -6,7 +6,6 @@ import tempfile
 
 from tqdm import tqdm
 
-
 try:
     import uniparse.decoders as decoders
 except Exception as e:
@@ -122,6 +121,8 @@ class Model(object):
                 # words, lemmas, tags, chars = x
                 gold_arcs, gold_rels = y
                 words = x[0]
+                
+                # wat 
                 if len(words) < 1:
                     continue
 
@@ -130,7 +131,7 @@ class Model(object):
                 mask = np.greater(words, self._vocab.ROOT)
                 num_tokens = int(np.sum(mask))
 
-                pred_arcs, pred_rels, loss = self._parser((x, y))
+                pred_arcs, pred_rels, pred_pos, loss = self._parser((x, y))
 
                 loss_value = backend.get_scalar(loss)
                 loss.backward()
@@ -144,8 +145,8 @@ class Model(object):
                 rel_accuracy = np.sum(rel_correct) / num_tokens
 
                 if verbose:
-                    metric_tuple = (epoch, epochs, float(arc_accuracy), float(rel_accuracy), loss_value)
-                    it_samples.set_description("[%d/%d] arc %.2f, rel %.2f, loss %.3f" % metric_tuple)
+                    metric_tuple = (epoch, epochs, float(arc_accuracy), float(rel_accuracy), float(pred_pos), loss_value)
+                    it_samples.set_description("[%d/%d] arc %.2f, rel %.2f, pos %.2f, loss %.3f" % metric_tuple)
 
                 global_step += 1
 
@@ -157,6 +158,8 @@ class Model(object):
 
             print("[%d] %0.5f, %0.5f " % (epoch, no_punct_dev_uas, no_punct_dev_las))
             sys.stdout.flush() # for python 2.7 compatibility
+
+            # remove callbacks
 
             batch_end_info = {
                 "dev_uas": no_punct_dev_uas,
@@ -201,7 +204,7 @@ class Model(object):
             # words = backend.input_tensor(words, dtype="int")
             # tags = backend.input_tensor(tags, dtype="int")
 
-            arc_preds, rel_preds, _ = self._parser((x, (None, None)))
+            arc_preds, rel_preds, pos_preds, _ = self._parser((x, (None, None)))
 
             outs = [(ind, arc[1:], rel[1:]) for ind, arc, rel in zip(idx, arc_preds, rel_preds)]
 

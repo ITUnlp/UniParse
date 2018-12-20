@@ -58,13 +58,7 @@ train_data = vocab.tokenize_conll(arguments.train)
 dev_data = vocab.tokenize_conll(arguments.dev)
 test_data = vocab.tokenize_conll(arguments.test)
 
-train_batches = scale_batch(train_data, scale=4000, cluster_count=40, padding_token=vocab.PAD, shuffle=True)
-
-# idx, batches = train_batches
-# for (words, tags), (gold_arc, gold_rel) in batches:
-#      print(words.T.shape)
-
-#train_batches = batch_by_buckets(train_data, batch_size=32, shuffle=True)
+train_batches = batch_by_buckets(train_data, batch_size=32, shuffle=True)
 dev_batches = batch_by_buckets(dev_data, batch_size=32, shuffle=True)
 test_batches = batch_by_buckets(test_data, batch_size=32, shuffle=False)
 
@@ -74,7 +68,7 @@ test_batches = batch_by_buckets(test_data, batch_size=32, shuffle=False)
 model = BaseParser(vocab, word_dims, tag_dims,
                    dropout_emb, lstm_layers,
                    lstm_hiddens, dropout_lstm_input, dropout_lstm_hidden,
-                   mlp_arc_size, mlp_rel_size, dropout_mlp, None, False)
+                   mlp_arc_size, mlp_rel_size, dropout_mlp, None, orthogonal_init=True)
 
 save_callback = ModelSaveCallback(arguments.model_dest)
 callbacks = [save_callback]
@@ -83,7 +77,8 @@ callbacks = [save_callback]
 parser = Model(model, decoder="eisner", loss="crossentropy", optimizer="adam", vocab=vocab)
 
 parser.train(train_batches, arguments.dev, dev_batches, epochs=n_epochs, callbacks=callbacks)
-# parser.load_from_file(arguments.model_dest)
+
+parser.load_from_file(arguments.model_dest)
 
 metrics = parser.evaluate(arguments.test, test_data)
 test_UAS = metrics["nopunct_uas"]

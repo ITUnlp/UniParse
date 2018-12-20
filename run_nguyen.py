@@ -27,8 +27,8 @@ arguments, unknown = parser.parse_known_args()
 
 n_epochs = arguments.epochs
 vocab = Vocabulary()
-vocab = vocab.fit(arguments.train)#, pretrained_embeddings=arguments.embs)
-#embeddings = vocab.load_embedding()
+vocab = vocab.fit(arguments.train, pretrained_embeddings=arguments.embs)
+embeddings = vocab.load_embedding()
 
 # save vocab for reproducability later
 if arguments.vocab_dest:
@@ -46,7 +46,7 @@ dev_batches = batch_by_buckets_with_chars(dev_data, batch_size=32, shuffle=True)
 test_batches = batch_by_buckets_with_chars(test_data, batch_size=32, shuffle=False)
 
 # instantiate model
-model = DependencyParser(vocab, None)#, embs=embeddings)
+model = DependencyParser(vocab, embs=embeddings)
 
 save_callback = ModelSaveCallback(arguments.model_dest)
 callbacks = [save_callback]
@@ -57,7 +57,7 @@ parser = Model(model, decoder="eisner", loss="hinge", optimizer="adam", vocab=vo
 parser.train(train_batches, arguments.dev, dev_batches, epochs=n_epochs, callbacks=callbacks)
 parser.load_from_file(arguments.model_dest)
 
-metrics = parser.evaluate(arguments.test, test_data)
+metrics = parser.evaluate(arguments.test, test_batches)
 test_UAS = metrics["nopunct_uas"]
 test_LAS = metrics["nopunct_las"]
 

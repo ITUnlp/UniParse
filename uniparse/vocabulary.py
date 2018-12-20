@@ -119,7 +119,7 @@ class Vocabulary(object):
         offset = max(self._word2id.values()) + 1
         counter = 0
 
-        with open(embedding_file, encoding="UTF-8") as f:
+        with io.open(embedding_file, encoding="UTF-8") as f:
             for line in f.readlines():
                 line = line.strip().split()
                 if not line:
@@ -138,7 +138,7 @@ class Vocabulary(object):
 
         embs = [[]] * len(self._word2id.keys())
         vector = None
-        with open(self._pret_file, encoding="UTF-8") as f:
+        with io.open(self._pret_file, encoding="UTF-8") as f:
             print(">> Loading embedding vectors")
             for i, line in enumerate(f.readlines(), start=1):
                 line = line.strip().split()

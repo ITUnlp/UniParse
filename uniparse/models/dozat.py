@@ -174,10 +174,10 @@ class BaseParser(Parser):
     def parameters(self):
         return self.params
 
-    def save_to_file(self, filename: str) -> None:
+    def save_to_file(self, filename):
         self.params.save(filename)
 
-    def load_from_file(self, filename: str) -> None:
+    def load_from_file(self, filename):
         self.params.populate(filename)
 
     def __call__(self, x):

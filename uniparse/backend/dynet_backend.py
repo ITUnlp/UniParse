@@ -56,7 +56,8 @@ class _DynetLossFunctions(object):
         gold_tensor = dy.pick_batch(scores, dynet_flatten(golds))
 
         #loss = pred_tensor - gold_tensor
-        loss = dy.bmax(dy.zeros(1, batch_size=m * batch_size), pred_tensor - gold_tensor)
+        zero = dy.zeros(1, batch_size=m * batch_size)
+        loss = dy.bmax(zero, pred_tensor - gold_tensor)
         masked_loss = loss * incorrect_mask_tensor
 
         return dy.sum_batches(masked_loss) / batch_size if batch_size_norm else dy.sum_batches(masked_loss)

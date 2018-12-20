@@ -1,9 +1,9 @@
 from uniparse.types import Parser
+from scipy.linalg import qr
 
 import uniparse
 import dynet as dy
 import numpy as np
-
 
 def leaky_relu(x):
     return dy.bmax(.1*x, x)
@@ -16,7 +16,8 @@ def bilinear(x, W, y, input_size, seq_len, batch_size, num_outputs = 1, bias_x =
     if bias_y:
         y = dy.concatenate([y, dy.inputTensor(np.ones((1, seq_len), dtype=np.float32))])
     
-    nx, ny = input_size + bias_x, input_size + bias_y
+    nx = input_size + bias_x
+    ny = input_size + bias_y
     # W: (num_outputs x ny) x nx
     lin = W * x
     if num_outputs > 1:
@@ -58,6 +59,16 @@ def orthonormal_initializer(output_size, input_size):
         Q = np.random.randn(input_size, output_size) / np.sqrt(output_size)
     return np.transpose(Q.astype(np.float32))
 
+def generate_orthogonal_matrix(output_size, input_size):
+    max_dim = max(output_size, input_size)
+    H = np.random.randn(max_dim, max_dim)
+    Q, _ = qr(H)
+
+    # clip it
+    Q = Q[:output_size, :input_size]
+    return Q
+
+
 
 def orthonormal_VanillaLSTMBuilder(lstm_layers, input_dims, lstm_hiddens, pc):
     builder = dy.VanillaLSTMBuilder(lstm_layers, input_dims, lstm_hiddens, pc)
@@ -72,14 +83,15 @@ def orthonormal_VanillaLSTMBuilder(lstm_layers, input_dims, lstm_hiddens, pc):
     return builder
 
 
-def biLSTM(builders, inputs, batch_size=None, dropout_x=0., dropout_h = 0.):
+def biLSTM(builders, inputs, dropout_x=0., dropout_h = 0.):
     for fb, bb in builders:
         f, b = fb.initial_state(), bb.initial_state()
         fb.set_dropouts(dropout_x, dropout_h)
         bb.set_dropouts(dropout_x, dropout_h)
-        if batch_size is not None:
-            fb.set_dropout_masks(batch_size)
-            bb.set_dropout_masks(batch_size)
+        
+        fb.set_dropout_masks(batch_size)
+        bb.set_dropout_masks(batch_size)
+
         fs, bs = f.transduce(inputs), b.transduce(reversed(inputs))
         inputs = [dy.concatenate([f,b]) for f, b in zip(fs, reversed(bs))]
     return inputs
@@ -111,14 +123,17 @@ class BaseParser(Parser):
 
         self._vocab = vocab
 
-        random_np_word_emb = gen_lookup_param(vocab.words_in_train, word_dims)
-        self.word_embs = pc.lookup_parameters_from_numpy(random_np_word_emb)
+        # random_np_word_emb = gen_lookup_param(vocab.words_in_train, word_dims)
+        # self.word_embs = pc.lookup_parameters_from_numpy(random_np_word_emb)
         if pretrained_embeddings is not None:
             self.pret_word_embs = pc.lookup_parameters_from_numpy(pretrained_embeddings)
         else:
             self.pret_word_embs = None
-        random_np_tag_emb = gen_lookup_param(vocab.tag_size, tag_dims)
-        self.tag_embs = pc.lookup_parameters_from_numpy(random_np_tag_emb)
+        #random_np_tag_emb = gen_lookup_param(vocab.tag_size, tag_dims)
+        #self.tag_embs = pc.lookup_parameters_from_numpy(random_np_tag_emb)
+
+        self.word_embs = pc.add_lookup_parameters(vocab.words_in_train, word_dims)
+        self.tag_embs = pc.add_lookup_parameters(vocab.tag_size, tag_dims)
 
         lstm = orthonormal_VanillaLSTMBuilder if orthogonal_init else dy.VanillaLSTMBuilder
 
@@ -136,37 +151,42 @@ class BaseParser(Parser):
 
         mlp_size = mlp_arc_size + mlp_rel_size
         if orthogonal_init:
-            w = orthonormal_initializer(mlp_size, 2 * lstm_hiddens)
-            self.mlp_dep_W = pc.parameters_from_numpy(w)
-            self.mlp_head_W = pc.parameters_from_numpy(w)
+            # w = orthonormal_initializer(mlp_size, 2 * lstm_hiddens)
+            # self.mlp_dep_W = pc.parameters_from_numpy(w)
+            #self.mlp_head_W = pc.parameters_from_numpy(w)
+            
+            self.mlp_dep_W = pc.add_parameters(mlp_size, 2 * lstm_hiddens, init='saxe')
+            self.mlp_head_W = pc.add_parameters(mlp_size, 2 * lstm_hiddens, init='saxe')
         else:
             self.mlp_dep_W = pc.add_parameters((mlp_size, 2 * lstm_hiddens))
             self.mlp_head_W = pc.add_parameters((mlp_size, 2 * lstm_hiddens))
-        self.mlp_dep_b = pc.add_parameters((mlp_size,), init=dy.ConstInitializer(0.))
-        self.mlp_head_b = pc.add_parameters((mlp_size,), init=dy.ConstInitializer(0.))
+
+        const_init = dy.ConstInitializer(0.)
+
+        self.mlp_dep_b = pc.add_parameters((mlp_size,), init=const_init)
+        self.mlp_head_b = pc.add_parameters((mlp_size,), init=const_init)
         self.mlp_arc_size = mlp_arc_size
         self.mlp_rel_size = mlp_rel_size
         self.dropout_mlp = dropout_mlp
 
-        self.arc_W = pc.add_parameters((mlp_arc_size, mlp_arc_size + 1), init=dy.ConstInitializer(0.))
-        self.rel_W = pc.add_parameters((vocab.rel_size*(mlp_rel_size + 1), mlp_rel_size + 1), init=dy.ConstInitializer(0.))
+        self.arc_W = pc.add_parameters((mlp_arc_size, mlp_arc_size + 1), init=const_init)
+        self.rel_W = pc.add_parameters((vocab.rel_size*(mlp_rel_size + 1), mlp_rel_size + 1), init=const_init)
 
         self._pc = pc
         self.params = pc
 
-        def _emb_mask_generator(seq_len, batch_size):
-            ret = []
-            for i in range(seq_len):
-                word_mask = np.random.binomial(1, 1. - dropout_dim, batch_size).astype(np.float32)
-                tag_mask = np.random.binomial(1, 1. - dropout_dim, batch_size).astype(np.float32)
-                scale = 3. / (2.*word_mask + tag_mask + 1e-12)
-                word_mask *= scale
-                tag_mask *= scale
-                word_mask = dy.inputTensor(word_mask, batched = True)
-                tag_mask = dy.inputTensor(tag_mask, batched = True)
-                ret.append((word_mask, tag_mask))
-            return ret
-        self.generate_emb_mask = _emb_mask_generator
+    def generate_emb_mask(seq_len, batch_size):
+        ret = []
+        for i in range(seq_len):
+            word_mask = np.random.binomial(1, 1. - dropout_dim, batch_size).astype(np.float32)
+            tag_mask = np.random.binomial(1, 1. - dropout_dim, batch_size).astype(np.float32)
+            scale = 3. / (2.*word_mask + tag_mask + 1e-12)
+            word_mask *= scale
+            tag_mask *= scale
+            word_mask = dy.inputTensor(word_mask, batched = True)
+            tag_mask = dy.inputTensor(tag_mask, batched = True)
+            ret.append((word_mask, tag_mask))
+        return ret
 
     @property 
     def parameter_collection(self):
@@ -175,10 +195,10 @@ class BaseParser(Parser):
     def parameters(self):
         return self.params
 
-    def save_to_file(self, filename: str) -> None:
+    def save_to_file(self, filename):
         self.params.save(filename)
 
-    def load_from_file(self, filename: str) -> None:
+    def load_from_file(self, filename):
         self.params.populate(filename)
 
     def __call__(self, x):
@@ -199,7 +219,7 @@ class BaseParser(Parser):
             arc_targets = arc_targets.T
             targets_1D = dynet_flatten_numpy(arc_targets)
 
-        seq_len, batch_size = word_inputs.shape
+        n, batch_size = word_inputs.shape
 
         mask = np.greater(word_inputs, self._vocab.ROOT).astype(np.float32)
         
@@ -211,15 +231,22 @@ class BaseParser(Parser):
             ]
         else:
             word_embs = [dy.lookup_batch(self.word_embs, np.where(w < self._vocab.words_in_train, w, self._vocab.UNK)) for w in word_inputs]
+
         tag_embs = [dy.lookup_batch(self.tag_embs, pos) for pos in tag_inputs]
         
         if is_train:
-            emb_masks = self.generate_emb_mask(seq_len, batch_size)
+            emb_masks = self.generate_emb_mask(n, batch_size)
             emb_inputs = [dy.concatenate([dy.cmult(w, wm), dy.cmult(pos, posm)]) for w, pos, (wm, posm) in zip(word_embs, tag_embs, emb_masks)]
         else:
             emb_inputs = [dy.concatenate([w, pos]) for w, pos in zip(word_embs, tag_embs)]
 
-        top_recur = dy.concatenate_cols(biLSTM(self.LSTM_builders, emb_inputs, batch_size, self.dropout_lstm_input if is_train else 0., self.dropout_lstm_hidden if is_train else 0.))
+        dropout_hidden_p = self.dropout_lstm_hidden if is_train else 0.0
+        dropout_input_p = self.dropout_lstm_input if is_train else 0.0
+
+        top_recur = biLSTM(self.LSTM_builders, emb_inputs, dropout_input_p, dropout_hidden_p)
+
+        # concate into a matrix
+        top_recur = dy.concatenate_cols(top_recur)
 
         if is_train:
             top_recur = dy.dropout_dim(top_recur, 1, self.dropout_mlp)
@@ -230,15 +257,23 @@ class BaseParser(Parser):
         W_head = self.mlp_head_W
         b_head = self.mlp_head_b
 
-        dep, head = leaky_relu(dy.affine_transform([b_dep, W_dep, top_recur])), leaky_relu(dy.affine_transform([b_head, W_head, top_recur]))
+        affine_dep = dy.affine_transform([b_dep, W_dep, top_recur])
+        dep = leaky_relu(affine_dep)
+
+        affine_head = dy.affine_transform([b_head, W_head, top_recur])
+        head = leaky_relu(affine_head)
+
         if is_train:
             dep, head= dy.dropout_dim(dep, 1, self.dropout_mlp), dy.dropout_dim(head, 1, self.dropout_mlp)
         
-        dep_arc, dep_rel = dep[:self.mlp_arc_size], dep[self.mlp_arc_size:]
-        head_arc, head_rel = head[:self.mlp_arc_size], head[self.mlp_arc_size:]
+        dep_arc = dep[:self.mlp_arc_size]
+        dep_rel = dep[self.mlp_arc_size:]
+
+        head_arc = head[:self.mlp_arc_size]
+        head_rel = head[self.mlp_arc_size:]
 
         W_arc = self.arc_W
-        arc_logits = bilinear(dep_arc, W_arc, head_arc, self.mlp_arc_size, seq_len, batch_size, num_outputs= 1, bias_x = True, bias_y = False)
+        arc_logits = bilinear(dep_arc, W_arc, head_arc, self.mlp_arc_size, n, batch_size, num_outputs= 1, bias_x = True, bias_y = False)
         # (#head x #dep) x batch_size
 
         arc_preds = arc_logits.npvalue().argmax(0)
@@ -247,22 +282,22 @@ class BaseParser(Parser):
         
         W_rel = self.rel_W
         
-        rel_logits = bilinear(dep_rel, W_rel, head_rel, self.mlp_rel_size, seq_len, batch_size, num_outputs = self._vocab.rel_size, bias_x = True, bias_y = True)
+        rel_logits = bilinear(dep_rel, W_rel, head_rel, self.mlp_rel_size, n, batch_size, num_outputs = self._vocab.rel_size, bias_x = True, bias_y = True)
         # (#head x rel_size x #dep) x batch_size
         
-        flat_rel_logits = dy.reshape(rel_logits, (seq_len, self._vocab.rel_size), seq_len * batch_size)
+        flat_rel_logits = dy.reshape(rel_logits, (n, self._vocab.rel_size), n * batch_size)
         # (#head x rel_size) x (#dep x batch_size)
 
         partial_rel_logits = dy.pick_batch(flat_rel_logits, targets_1D if is_train else dynet_flatten_numpy(arc_preds))
         # (rel_size) x (#dep x batch_size)
 
         # @djam - restored shape
-        partial_rel_logits = dy.reshape(partial_rel_logits, (self._vocab.rel_size, seq_len), batch_size)
+        partial_rel_logits = dy.reshape(partial_rel_logits, (self._vocab.rel_size, n), batch_size)
         
         # if not isTrain:
-        arc_probs = np.transpose(np.reshape(dy.softmax(arc_logits).npvalue(), (seq_len, seq_len, batch_size), 'F'))
+        arc_probs = np.transpose(np.reshape(dy.softmax(arc_logits).npvalue(), (n, n, batch_size), 'F'))
         # #batch_size x #dep x #head
-        rel_probs = np.transpose(np.reshape(dy.softmax(dy.transpose(flat_rel_logits)).npvalue(), (self._vocab.rel_size, seq_len, seq_len, batch_size), 'F'))
+        rel_probs = np.transpose(np.reshape(dy.softmax(dy.transpose(flat_rel_logits)).npvalue(), (self._vocab.rel_size, n, n, batch_size), 'F'))
         # batch_size x #dep x #head x #nclasses
 
         # @djam contribution
@@ -273,12 +308,12 @@ class BaseParser(Parser):
             arc_predictions = arc_preds.T
             # batch_size x dep
 
-            _1 = np.repeat(range(batch_size), seq_len)  # batches
-            _2 = np.tile(range(seq_len), batch_size)  # modifiers
+            _1 = np.repeat(range(batch_size), n)  # batches
+            _2 = np.tile(range(n), batch_size)  # modifiers
             _3 = arc_predictions.reshape(-1)  # predicted arcs
 
             rel_predictions = rel_probs[_1, _2, _3].argmax(-1)
-            rel_predictions = rel_predictions.reshape(batch_size, seq_len)
+            rel_predictions = rel_predictions.reshape(batch_size, n)
             # batch_size x dep
 
             loss = self.compute_loss(arc_logits, partial_rel_logits, arc_targets, rel_targets, mask)

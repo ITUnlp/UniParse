@@ -82,10 +82,6 @@ class DependencyParser(Parser):
     def load_from_file(self, filename):
         self.params.populate(filename)
 
-    @staticmethod
-    def _propability_map(matrix, dictionary):
-        return np.vectorize(dictionary.__getitem__)(matrix)
-
     def __call__(self, in_tuple):
         (word_ids, upos_ids), (gold_arcs, gold_rels) = in_tuple
         return self.run(word_ids, upos_ids, gold_arcs, gold_rels)
@@ -114,16 +110,11 @@ class DependencyParser(Parser):
         word_h = self.edge_head(word_exprs)
         word_m = self.edge_modi(word_exprs)
 
-        arc_edges = []
-        for m in word_m:
-            for h in word_h:
-                edge = dy.tanh(h + m + self.edge_bias)
-                arc_edges.append(edge)
-        # arc_edges = [
-        #     dy.tanh(word_h[head] + word_m[modifier] + self.edge_bias.expr())
-        #     for modifier in range(n)
-        #     for head in range(n)
-        # ]
+        arc_edges = [
+            dy.tanh(head + modifier + self.edge_bias)
+            for modifier in word_m
+            for head in word_h
+        ]
         
         # edges scoring
         arc_scores = self.e_scorer(arc_edges)
