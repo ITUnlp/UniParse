@@ -163,7 +163,7 @@ class DynetBackend(object):
         # Since dynet squeezes the batch dimensions if it is equals to 1, we expand
         # to get a dimensionality of at least 3 if the the dimensionality is correct,
         # then we push the batch_dimension to the first to 0, for compatibility
-        values = values[None, :, :] if values.ndim < 3 else np.moveaxis(values, 2, 0)
+        values = values[None, :, :] if values.ndim < 3 else np.transpose(values) # np.moveaxis(values, 2, 0)
         return values
 
     @staticmethod
