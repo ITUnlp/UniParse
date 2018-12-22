@@ -12,9 +12,9 @@ def Dense(model_parameters, input_dim, hidden_dim, activation, use_bias, dropout
 
     def call(xs):
         """ todo """
-        output = w * xs
+        output = w.expr() * xs
         if use_bias:
-            output = output + b
+            output = output + b.expr()
         if activation:
             return activation(output)
 
@@ -53,14 +53,14 @@ class MLP(object):
     def call(self, xs):
         """ todo """
         # first pass
-        output = self.W * xs
+        output = self.W.expr() * xs
         if self.use_bias:
-            output = output + self.bias
+            output = output + self.bias.expr()
         if self.activation:
             output = self.activation(output)
 
         # second pass
-        output = (self.W2 * output) + self.bias2
+        output = (self.W2.expr() * output) + self.bias2.expr()
 
         return output
 
