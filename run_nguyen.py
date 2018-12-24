@@ -1,27 +1,26 @@
 import argparse
 
-from uniparse import Vocabulary
 from uniparse import Model
-from uniparse.callbacks import TensorboardLoggerCallback
-from uniparse.callbacks import ModelSaveCallback
+from uniparse import Vocabulary
 
-#from uniparse.dataprovider import BucketBatcher
-#from uniparse.dataprovider import ScaledBatcher
-from uniparse.dataprovider import batch_by_buckets
+from uniparse.callbacks import ModelSaveCallback
+from uniparse.callbacks import TensorboardLoggerCallback
+
 from uniparse.dataprovider import scale_batch
+from uniparse.dataprovider import batch_by_buckets
 from uniparse.dataprovider import batch_by_buckets_with_chars
 
-from uniparse.models.nguyen import DependencyParser
+from uniparse.models.dynet_models.nguyen import Nguyen
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--train", dest="train", help="Annotated CONLL train file", metavar="FILE", required=True)
-parser.add_argument("--dev", dest="dev", help="Annotated CONLL dev file", metavar="FILE", required=True)
-parser.add_argument("--test", dest="test", help="Annotated CONLL dev test", metavar="FILE", required=True)
-parser.add_argument("--epochs", dest="epochs", type=int, default=30)
-parser.add_argument("--vocab_dest", dest="vocab_dest")
-parser.add_argument("--model_dest", dest="model_dest", required=True)
-parser.add_argument("--embs", dest="embs", required=True)
+parser.add_argument("--train", required=True)
+parser.add_argument("--dev", required=True)
+parser.add_argument("--test", required=True)
+parser.add_argument("--epochs", type=int, default=30)
+parser.add_argument("--vocab_dest")
+parser.add_argument("--model_dest", required=True)
+parser.add_argument("--embs", required=True)
 
 arguments, unknown = parser.parse_known_args()
 
@@ -46,7 +45,7 @@ dev_batches = batch_by_buckets_with_chars(dev_data, batch_size=32, shuffle=True)
 test_batches = batch_by_buckets_with_chars(test_data, batch_size=32, shuffle=False)
 
 # instantiate model
-model = DependencyParser(vocab, embs=embeddings)
+model = Nguyen(vocab, embs=embeddings)
 
 save_callback = ModelSaveCallback(arguments.model_dest)
 callbacks = [save_callback]

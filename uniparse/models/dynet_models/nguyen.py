@@ -65,7 +65,7 @@ class MLP(object):
         return output
 
 
-class DependencyParser(Parser):
+class Nguyen(Parser):
     """  Implementation of Kiperwasser and Goldbergs (2016) bilstm parser paper  """
     def __init__(self, vocab, embs):
         params = dy.ParameterCollection()

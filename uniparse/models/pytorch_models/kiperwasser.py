@@ -8,6 +8,8 @@ import torch.nn.functional as F
 
 from uniparse.types import Parser
 
+from uniparse.backend.pytorch_backend import _PytorchLossFunctions
+
 
 class BiRNN(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers):
@@ -26,7 +28,7 @@ class BiRNN(nn.Module):
         return out
 
 
-class DependencyParser(nn.Module, Parser):
+class Kiperwasser(nn.Module, Parser):
     def save_to_file(self, filename: str) -> None:
         torch.save(self.state_dict(), filename)
 
@@ -66,6 +68,8 @@ class DependencyParser(nn.Module, Parser):
         # label scoring
         self.l_scorer = nn.Linear(hidden_dim, vocab.label_count, bias=True)
 
+        self._loss = _PytorchLossFunctions()
+
     def init_weights(self):
         nn.init.xavier_uniform_(self.wlookup.weight)
         nn.init.xavier_uniform_(self.tlookup.weight)
@@ -85,16 +89,22 @@ class DependencyParser(nn.Module, Parser):
         return np.vectorize(dictionary.__getitem__)(matrix)
 
     def forward(self, x):
-        word_ids, lemma_ids, upos_ids, target_arcs, rel_targets, chars = x
+        (word_ids, upos_ids), (gold_arcs, gold_rels) = x
+        
+        mask = np.greater(word_ids, self._vocab.ROOT)        
 
         batch_size, n = word_ids.shape
 
-        is_train = target_arcs is not None
+        target_arcs = gold_arcs
+        is_train = gold_arcs is not None
 
         # if is_train:
             # c = self._propability_map(word_ids, self.i2c)
             # drop_mask = np.greater(0.25/(c+0.25), np.random.rand(*word_ids.shape))
             # word_ids = np.where(drop_mask, self._vocab.OOV, word_ids)  # replace with UNK / OOV
+
+        word_id_tensor = torch.LongTensor(word_ids)
+        upos_id_tensor = torch.LongTensor(upos_ids)
 
         word_embs = self.wlookup(word_ids)
         upos_embs = self.tlookup(upos_ids)
@@ -109,7 +119,7 @@ class DependencyParser(nn.Module, Parser):
         arc_score_list = []
         for i in range(n):
             modifier_i = word_h[:, i, None, :] + word_m  # we would like have head major
-            modifier_i = F.tanh(modifier_i)
+            modifier_i = torch.tanh(modifier_i)
             modifier_i_scores = self.e_scorer(modifier_i)
             arc_score_list.append(modifier_i_scores)
 
@@ -138,11 +148,18 @@ class DependencyParser(nn.Module, Parser):
         rel_heads = self.label_head(rel_heads).view((batch_size, n, -1))
         rel_modifiers = self.label_modi(word_exprs)
 
-        rel_arcs = F.tanh(rel_modifiers + rel_heads)
+        rel_arcs = torch.tanh(rel_modifiers + rel_heads)
 
         rel_scores = self.l_scorer(rel_arcs)
         predicted_rels = rel_scores.argmax(-1).data.numpy()
 
-        return parsed_trees, predicted_rels, arc_scores, rel_scores
+        loss = None
+        if is_train:
+            arc_loss = self._loss.hinge(arc_scores, parsed_trees, gold_arcs, mask)
+            rel_loss = self._loss.hinge(rel_scores, predicted_rels, gold_rels, mask)
+
+            loss = arc_loss + rel_loss
+        
+        return parsed_trees, predicted_rels, loss
 
 

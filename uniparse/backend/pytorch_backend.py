@@ -25,7 +25,7 @@ class _PytorchOptimizers(object):
 class _PytorchLossFunctions(object):
     # actually used for arcs on
     @staticmethod
-    def kipperwasser_loss(scores, preds, golds, mask):
+    def kiperwasser_loss(scores, preds, golds, mask):
         raise NotImplementedError()
 
     @staticmethod
@@ -33,7 +33,7 @@ class _PytorchLossFunctions(object):
         raise NotImplementedError()
 
     @staticmethod  # actually used for labels
-    def kipperwasser_hinge(x, pred_y, y, mask):
+    def kiperwasser_hinge(x, pred_y, y, mask):
         raise NotImplementedError()
 
     @staticmethod

@@ -32,7 +32,7 @@ def Dense(model_parameters, input_dim, hidden_dim, activation, use_bias):
     return apply
 
 
-class DependencyParser(Parser):
+class Kiperwasser(Parser):
     """  Implementation of Kiperwasser and Goldbergs (2016) bilstm parser paper  """
     def __init__(self, vocab):
         params = dy.ParameterCollection()
