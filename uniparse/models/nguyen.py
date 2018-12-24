@@ -218,7 +218,7 @@ class DependencyParser(Parser):
         #num_tokens = int(np.sum(mask))
         #pos_correct = np.equal(np.transpose(pos_preds), upos_ids).astype(np.float32) * mask
         #pos_accuracy = np.sum(pos_correct) / num_tokens
-        pos_accuracy = 1.0
+        # pos_accuracy = 1.0
 
         loss = None
         if train:
@@ -228,4 +228,5 @@ class DependencyParser(Parser):
             #loss = (arc_loss + rel_loss + pos_loss) / batch_size
             loss = (arc_loss + rel_loss) / batch_size
 
-        return parsed_tree, predicted_rels, pos_accuracy, loss
+        return parsed_tree, predicted_rels, loss
+        # return parsed_tree, predicted_rels, pos_accuracy, loss
