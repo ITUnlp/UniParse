@@ -1,9 +1,12 @@
 """ setup script """
 import os
 import platform
+
+from Cython.Distutils import build_ext
+from distutils.core import setup
+from distutils.extension import Extension
 import numpy as np
-from distutils.core import setup, Extension
-from Cython.Build import cythonize
+
 
 def build_extra_compile_args():
     args = ['-O3', "-ffast-math", "-march=native"]
@@ -19,33 +22,43 @@ def build_extra_compile_args():
     return args
 
 
-c_plusplus_extra_args = build_extra_compile_args()
+compile_arguments = build_extra_compile_args()
 
-extensions = [
-    Extension(
-        name="uniparse.decoders.eisner",
-        sources=["uniparse/decoders/eisner.pyx"],
-        extra_compile_args=['-O3'],
-        include_dirs=[np.get_include()]
-    ),
-    Extension(
-        name="uniparse.decoders.cle",
-        sources=["uniparse/decoders/cle.pyx"],
-        extra_compile_args=['-O3'],
-        include_dirs=[np.get_include()]
-    ),
-    Extension(
-        name="uniparse.models.mst_encode",
-        sources=["uniparse/models/mst_encode.pyx"],
-        language="c++",
-        extra_compile_args=c_plusplus_extra_args,
-        include_dirs=[np.get_include()]
-    )
+algorithms = [
+    ("uniparse.decoders.eisner", "uniparse/decoders/eisner.pyx"),
+    ("uniparse.decoders.cle", "uniparse/decoders/cle.pyx"),
+    ("uniparse.models.mst_encode", "uniparse/models/mst_encode.pyx")
 ]
+extensions = []
+for name, location in algorithms:
+    e = Extension(
+        name=name, 
+        sources=[location], 
+        extra_compile_args=compile_arguments,
+        include_dirs=[np.get_include()],
+        language='c++'
+    )
+    extensions.append(e)
 
-setup(ext_modules=cythonize(extensions))
 
-# remove c and build folder
-os.system("rm uniparse/decoders/*.c")
-os.system("rm uniparse/models/*.cpp")
-os.system("rm -fr ./build/")
+
+with open("README.md", "rb") as f:
+    README = f.read().decode("utf-8")
+
+setup(
+    name="UniParse",
+    version=0.1,
+    description="Universal graph based dependency parsing prototype framework",
+    long_description=README,
+    author="NLP group @ the IT University of Copenhagen",
+    author_email="djam@itu",
+    url="https://github.com/ITUnlp/UniParse",
+    install_requires=['numpy', 'scipy', 'sklearn', 'tqdm', 'cython'],
+    cmdclass={ 'build_ext': build_ext },
+    ext_modules=extensions
+    # entry_points={
+    #     "console_scripts": [
+    #         "ketl=ketl.cli:main",
+    #     ],
+    # })
+)
