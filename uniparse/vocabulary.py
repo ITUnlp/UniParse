@@ -51,7 +51,7 @@ class Vocabulary(object):
         self._id2word = ['<pad>', '<root>', '<unk>']
         self._id2lemma = ['<pad>', '<root>', '<unk>']
         self._id2tag = ['<pad>', '<root>', '<unk>']
-        self._id2rel = ['<pad>', 'root']
+        self._id2rel = ['<pad>', 'root', '<unk>']
         self._id2char = ['<pad>', 'root', '<unk>']
         for word, count in word_counter.most_common():
             if count > min_occur_count:
@@ -167,14 +167,22 @@ class Vocabulary(object):
         return sentences
 
     def _parse_conll_line(self, info, tokenize):
-        word, lemma, tag, head, rel, chars = \
-            info[1].lower(), info[2].lower(), info[3], int(info[6]), info[7], list(info[1])
+        word = info[1].lower()
+        lemma = info[2].lower()
+        tag = info[3]
+        head = int(info[6])
+        rel = info[7]
+        chars = list(info[1])
 
         word = self._normalize_word(word)
         if tokenize:
-            word, lemma, tag, head, rel = \
-                self._word2id.get(word, self.OOV), self._lemma2id.get(lemma, self.OOV), \
-                self._tag2id[tag], head, self._rel2id[rel]
+            word = self._word2id.get(word, self.OOV)
+            lemma = self._lemma2id.get(lemma, self.OOV)
+            tag = self._tag2id.get(tag, self.OOV)
+            # head = ... doesn't change :)
+            rel = self._rel2id.get(rel, self.OOV)
+
+            # TODO: Log the OOV occurences
 
             chars = [self.char2id(c) for c in chars]
 
