@@ -65,7 +65,7 @@ test_batches = batch_by_buckets(test_data, batch_size=32, shuffle=False)
 
 # instantiate model
 """ """
-model = BaseParser(vocab, word_dims, tag_dims,
+model = Dozat(vocab, word_dims, tag_dims,
                    dropout_emb, lstm_layers,
                    lstm_hiddens, dropout_lstm_input, dropout_lstm_hidden,
                    mlp_arc_size, mlp_rel_size, dropout_mlp, None, orthogonal_init=True)
