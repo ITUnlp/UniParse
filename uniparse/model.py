@@ -19,6 +19,23 @@ import numpy as np
 import sklearn.utils
 
 
+import inspect
+
+def infer_backend(parameters):
+    try:
+        import dynet as dy
+        if isinstance(parameters, dy.ParameterCollection):
+            return "dynet"
+    except:
+        pass
+
+    import torch
+    if inspect.isgenerator(parameters):
+        return "pytorch"
+
+    raise ValueError("couldn't recognize backend")
+
+
 class Model(object):
     def __init__(self, model, decoder, loss, optimizer, strategy=None, vocab=None):
         self._model_uid = time.strftime("%m%d%H%M%S")
@@ -30,9 +47,16 @@ class Model(object):
         if strategy:
             print("DEPRECATED: model batching. In the future batch the data own your own and pass it to the model.")
 
+        # infer backend through parameters
+        model_parameters = model.parameters()
+        backend_name = infer_backend(model_parameters)
+        backend = backend_wrapper.init_backend(backend_name)
+        model.set_backend(backend)
+        self.backend = backend
+
         # retrieve backend wrapper
-        self.backend = backend_wrapper.init_backend(model.get_backend_name())
-        model.set_backend(self.backend)
+        # self.backend = backend_wrapper.init_backend(model.get_backend_name())
+        # model.set_backend(self.backend)
 
         # extract optimizer / decoder / loss from strings
         if isinstance(optimizer, str):
