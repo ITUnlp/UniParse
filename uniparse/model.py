@@ -124,6 +124,7 @@ class Model(object):
                 
                 # wat 
                 if len(words) < 1:
+                    print("n words are less than 1.. whats happening")
                     continue
 
                 # PAD = 0; ROOT = 1; OOV = 2; UNK = 2
@@ -146,8 +147,6 @@ class Model(object):
                 rel_accuracy = np.sum(rel_correct) / num_tokens
 
                 if verbose:
-                    # metric_tuple = (epoch, epochs, float(arc_accuracy), float(rel_accuracy), float(pred_pos), loss_value)
-                    # it_samples.set_description("[%d/%d] arc %.2f, rel %.2f, pos %.2f, loss %.3f" % metric_tuple)
                     metric_tuple = (epoch, epochs, float(arc_accuracy), float(rel_accuracy), loss_value)
                     it_samples.set_description("[%d/%d] arc %.2f, rel %.2f, loss %.3f" % metric_tuple)
 

@@ -3,9 +3,10 @@ from collections import Counter
 import io
 import re
 import pickle
-
 import numpy as np
 
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 def validate_line(line):
     if line.startswith("#"):
@@ -167,26 +168,40 @@ class Vocabulary(object):
         return sentences
 
     def _parse_conll_line(self, info, tokenize):
-        word = info[1].lower()
+        word = self._normalize_word(info[1].lower())
+            
         lemma = info[2].lower()
         tag = info[3]
         head = int(info[6])
         rel = info[7]
         chars = list(info[1])
 
-        word = self._normalize_word(word)
-        if tokenize:
-            word = self._word2id.get(word, self.OOV)
-            lemma = self._lemma2id.get(lemma, self.OOV)
-            tag = self._tag2id.get(tag, self.OOV)
-            # head = ... doesn't change :)
-            rel = self._rel2id.get(rel, self.OOV)
+        if not tokenize:
+            return word, lemma, tag, head, rel, chars
 
-            # TODO: Log the OOV occurences
+        t_word = self._word2id.get(word, self.OOV)
+        t_lemma = self._lemma2id.get(lemma, self.OOV)
+        t_tag = self._tag2id.get(tag, self.OOV)
+        # head = ... doesn't change :)
+        t_rel = self._rel2id.get(rel, self.OOV)
+        t_chars = [self.char2id(c) for c in chars]
 
-            chars = [self.char2id(c) for c in chars]
+        # mappings = [
+        #     (word, t_word, "form"),
+        #     #(t_lemma, "lemma"),
+        #     (tag, t_tag, "tag"),
+        #     (rel, t_rel, "relation")
+        
+        # ]
+        # oov_errors = [(sval, name) for sval, val, name in mappings if val == self.OOV]
 
-        return word, lemma, tag, head, rel, chars
+        # Log oov
+        # if oov_errors:
+        #     for token, _type in oov_errors:
+        #         logging.info("[%s]: %s -> OOV " % (_type, token))
+
+        return t_word, t_lemma, t_tag, head, t_rel, t_chars
+
 
     def _read_conll(self, input_file, tokenize = True):
         word_root = self.ROOT
@@ -214,17 +229,12 @@ class Vocabulary(object):
                     heads.append(head)
                     rels.append(rel)
                     chars.append(characters)
-                    # sent.append([word, tag, head, rel])
-                    # word_chars.append([characters])
                 else:
-                    # sent_chars.append(word_chars)
                     sent = (words, lemmas, tags, heads, rels, chars)
                     sents.append(sent)
 
                     words, lemmas, tags, heads, rels, chars = \
                         [word_root], [lemma_root], [tag_root], [root_head], [rel_root], [char_root]
-                    # sent = [[word_root, tag_root, root_head, rel_root]]
-                    # word_chars = [char_root]
 
         return sents
 
