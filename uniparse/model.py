@@ -37,7 +37,7 @@ def infer_backend(parameters):
 
 
 class Model(object):
-    def __init__(self, model, decoder, loss, optimizer, strategy=None, vocab=None):
+    def __init__(self, model, decoder, loss, optimizer, strategy=None, vocab=None, backend=None):
         self._model_uid = time.strftime("%m%d%H%M%S")
         self._parser = model
         self._optimizer = None
@@ -47,10 +47,16 @@ class Model(object):
         if strategy:
             print("DEPRECATED: model batching. In the future batch the data own your own and pass it to the model.")
 
-        # infer backend through parameters
-        model_parameters = model.parameters()
-        backend_name = infer_backend(model_parameters)
-        backend = backend_wrapper.init_backend(backend_name)
+        if backend:
+            # provided by user
+            backend = backend_wrapper.init_backend(backend_name)
+        else:
+            # infer backend through parameters
+            model_parameters = model.parameters()
+            backend_name = infer_backend(model_parameters)
+            backend = backend_wrapper.init_backend(backend_name)
+        
+        # i want to move this away form the model. the model knows which backend its using
         model.set_backend(backend)
         self.backend = backend
 
