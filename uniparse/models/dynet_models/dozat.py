@@ -156,12 +156,12 @@ class Dozat(Parser):
 
         mlp_size = mlp_arc_size + mlp_rel_size
         if orthogonal_init:
-            # w = orthonormal_initializer(mlp_size, 2 * lstm_hiddens)
-            # self.mlp_dep_W = pc.parameters_from_numpy(w)
-            # self.mlp_head_W = pc.parameters_from_numpy(w)
+            w = orthonormal_initializer(mlp_size, 2 * lstm_hiddens)
+            self.mlp_dep_W = pc.parameters_from_numpy(w)
+            self.mlp_head_W = pc.parameters_from_numpy(w)
             
-            self.mlp_dep_W = pc.add_parameters((mlp_size, 2 * lstm_hiddens), init='glorot')
-            self.mlp_head_W = pc.add_parameters((mlp_size, 2 * lstm_hiddens), init='glorot')
+            # self.mlp_dep_W = pc.add_parameters((mlp_size, 2 * lstm_hiddens), init='glorot')
+            # self.mlp_head_W = pc.add_parameters((mlp_size, 2 * lstm_hiddens), init='glorot')
         else:
             self.mlp_dep_W = pc.add_parameters((mlp_size, 2 * lstm_hiddens))
             self.mlp_head_W = pc.add_parameters((mlp_size, 2 * lstm_hiddens))
