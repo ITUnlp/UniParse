@@ -106,8 +106,8 @@ class Kiperwasser(nn.Module, Parser):
         word_id_tensor = torch.LongTensor(word_ids)
         upos_id_tensor = torch.LongTensor(upos_ids)
 
-        word_embs = self.wlookup(word_ids)
-        upos_embs = self.tlookup(upos_ids)
+        word_embs = self.wlookup(word_id_tensor)
+        upos_embs = self.tlookup(upos_id_tensor)
 
         words = torch.cat([word_embs, upos_embs], dim=-1)
 
