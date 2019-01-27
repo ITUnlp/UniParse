@@ -77,9 +77,9 @@ class Model(object):
         self._runtime_decoder = runtime_decoder
 
         # extract loss functions
-        self.arc_loss, self.rel_loss = self._get_loss_functions(loss)
-        self._parser.set_loss_function(lambda a,b,c,d,e: self.arc_loss(a,None,c,e) + self.rel_loss(b,None,d,e))
-        self._parser.set_loss_object(self.backend.loss)
+        # self.arc_loss, self.rel_loss = self._get_loss_functions(loss)
+        # self._parser.set_loss_function(lambda a,b,c,d,e: self.arc_loss(a,None,c,e) + self.rel_loss(b,None,d,e))
+        # self._parser.set_loss_object(self.backend.loss)
 
 
 

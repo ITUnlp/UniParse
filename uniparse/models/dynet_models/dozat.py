@@ -5,6 +5,9 @@ import uniparse
 import dynet as dy
 import numpy as np
 
+from uniparse.backend.dynet_backend import _DynetLossFunctions
+
+
 def leaky_relu(x):
     return dy.bmax(.1*x, x)
 
@@ -83,7 +86,7 @@ def orthonormal_VanillaLSTMBuilder(lstm_layers, input_dims, lstm_hiddens, pc):
     return builder
 
 
-def biLSTM(builders, inputs, dropout_x=0., dropout_h = 0.):
+def biLSTM(builders, inputs, batch_size=None, dropout_x=0., dropout_h = 0.):
     for fb, bb in builders:
         f, b = fb.initial_state(), bb.initial_state()
         fb.set_dropouts(dropout_x, dropout_h)
@@ -123,6 +126,8 @@ class Dozat(Parser):
 
         self._vocab = vocab
 
+        self.dropout_dim = dropout_dim
+
         # random_np_word_emb = gen_lookup_param(vocab.words_in_train, word_dims)
         # self.word_embs = pc.lookup_parameters_from_numpy(random_np_word_emb)
         if pretrained_embeddings is not None:
@@ -132,8 +137,8 @@ class Dozat(Parser):
         #random_np_tag_emb = gen_lookup_param(vocab.tag_size, tag_dims)
         #self.tag_embs = pc.lookup_parameters_from_numpy(random_np_tag_emb)
 
-        self.word_embs = pc.add_lookup_parameters(vocab.words_in_train, word_dims)
-        self.tag_embs = pc.add_lookup_parameters(vocab.tag_size, tag_dims)
+        self.word_embs = pc.add_lookup_parameters((vocab.words_in_train, word_dims))
+        self.tag_embs = pc.add_lookup_parameters((vocab.tag_size, tag_dims))
 
         lstm = orthonormal_VanillaLSTMBuilder if orthogonal_init else dy.VanillaLSTMBuilder
 
@@ -153,10 +158,10 @@ class Dozat(Parser):
         if orthogonal_init:
             # w = orthonormal_initializer(mlp_size, 2 * lstm_hiddens)
             # self.mlp_dep_W = pc.parameters_from_numpy(w)
-            #self.mlp_head_W = pc.parameters_from_numpy(w)
+            # self.mlp_head_W = pc.parameters_from_numpy(w)
             
-            self.mlp_dep_W = pc.add_parameters(mlp_size, 2 * lstm_hiddens, init='saxe')
-            self.mlp_head_W = pc.add_parameters(mlp_size, 2 * lstm_hiddens, init='saxe')
+            self.mlp_dep_W = pc.add_parameters((mlp_size, 2 * lstm_hiddens), init='glorot')
+            self.mlp_head_W = pc.add_parameters((mlp_size, 2 * lstm_hiddens), init='glorot')
         else:
             self.mlp_dep_W = pc.add_parameters((mlp_size, 2 * lstm_hiddens))
             self.mlp_head_W = pc.add_parameters((mlp_size, 2 * lstm_hiddens))
@@ -175,11 +180,13 @@ class Dozat(Parser):
         self._pc = pc
         self.params = pc
 
-    def generate_emb_mask(seq_len, batch_size):
+        self.losses = _DynetLossFunctions()
+
+    def generate_emb_mask(self, seq_len, batch_size):
         ret = []
         for i in range(seq_len):
-            word_mask = np.random.binomial(1, 1. - dropout_dim, batch_size).astype(np.float32)
-            tag_mask = np.random.binomial(1, 1. - dropout_dim, batch_size).astype(np.float32)
+            word_mask = np.random.binomial(1, 1. - self.dropout_dim, batch_size).astype(np.float32)
+            tag_mask = np.random.binomial(1, 1. - self.dropout_dim, batch_size).astype(np.float32)
             scale = 3. / (2.*word_mask + tag_mask + 1e-12)
             word_mask *= scale
             tag_mask *= scale
@@ -243,7 +250,7 @@ class Dozat(Parser):
         dropout_hidden_p = self.dropout_lstm_hidden if is_train else 0.0
         dropout_input_p = self.dropout_lstm_input if is_train else 0.0
 
-        top_recur = biLSTM(self.LSTM_builders, emb_inputs, dropout_input_p, dropout_hidden_p)
+        top_recur = biLSTM(self.LSTM_builders, emb_inputs, batch_size, dropout_input_p, dropout_hidden_p)
 
         # concate into a matrix
         top_recur = dy.concatenate_cols(top_recur)
@@ -316,7 +323,12 @@ class Dozat(Parser):
             rel_predictions = rel_predictions.reshape(batch_size, n)
             # batch_size x dep
 
-            loss = self.compute_loss(arc_logits, partial_rel_logits, arc_targets, rel_targets, mask)
+            #loss = self.compute_loss(arc_logits, partial_rel_logits, arc_targets, rel_targets, mask)
+            arc_loss = self.losses.crossentropy(arc_logits, None, arc_targets, mask, batch_size_norm=False)
+            rel_loss = self.losses.crossentropy(partial_rel_logits, None, rel_targets, mask, batch_size_norm=False)
+
+            loss = arc_loss + rel_loss
+            loss = loss / float(batch_size)
 
             return arc_predictions, rel_predictions, loss
         else:
