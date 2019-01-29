@@ -12,8 +12,9 @@ from uniparse.backend.pytorch_backend import _PytorchLossFunctions
 
 
 class BiRNN(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers):
+    def __init__(self, input_size, hidden_size, num_layers, gpu=False):
         super(BiRNN, self).__init__()
+        self.gpu = gpu
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, bidirectional=True)
@@ -22,6 +23,10 @@ class BiRNN(nn.Module):
         # Set initial cell states
         h0 = torch.zeros(self.num_layers * 2, x.size(0), self.hidden_size)
         c0 = torch.zeros(self.num_layers * 2, x.size(0), self.hidden_size)
+
+        if self.gpu:
+            h0 = h0.cuda()
+            c0 = c0.cuda()
 
         out, _ = self.lstm(x, (h0, c0))  # out: tensor of shape (batch_size, seq_length, hidden_size*2)
 
