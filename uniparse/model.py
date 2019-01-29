@@ -144,8 +144,8 @@ class Model(object):
             samples = sklearn.utils.shuffle(samples)
 
             it_samples = tqdm(samples) if verbose else samples
+            epoch_time = time.time()
             for x, y in it_samples:
-                epoch_time = time.time()
 
                 # renew graph
                 backend.renew_cg()
