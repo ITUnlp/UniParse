@@ -163,11 +163,9 @@ class Model(object):
                 num_tokens = int(np.sum(mask))
 
                 pred_arcs, pred_rels, loss = self._parser((x, y))
-                # pred_arcs, pred_rels, pred_pos, loss = self._parser((x, y))
 
-                loss.forward() # forward compute
-                loss.backward() # backward compute
                 loss_value = backend.get_scalar(loss)
+                loss.backward() # backward compute
 
                 backend.step(self._optimizer)
                 
