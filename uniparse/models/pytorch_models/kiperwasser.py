@@ -55,6 +55,8 @@ class Kiperwasser(nn.Module, Parser):
         self.tlookup = nn.Embedding(self.word_count, upos_dim)
 
         self.deep_bilstm = BiRNN(word_dim+upos_dim, word_dim+upos_dim, 2)
+        if gpu:
+            self.deep_bilstm = self.deep_bilstm.cuda()
 
         # edge encoding
         self.edge_head = nn.Linear(bilstm_out, hidden_dim)
