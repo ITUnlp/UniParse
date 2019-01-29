@@ -35,8 +35,10 @@ class Kiperwasser(nn.Module, Parser):
     def load_from_file(self, filename: str) -> None:
         self.load_state_dict(torch.load(filename))
 
-    def __init__(self, vocab):
+    def __init__(self, vocab, gpu=False):
         super().__init__()
+
+        self.gpu = gpu
 
         upos_dim = 25
         word_dim = 100
@@ -106,6 +108,10 @@ class Kiperwasser(nn.Module, Parser):
         word_id_tensor = torch.LongTensor(word_ids)
         upos_id_tensor = torch.LongTensor(upos_ids)
 
+        if self.gpu:
+            word_id_tensor = word_id_tensor.cuda()
+            upos_id_tensor = upos_id_tensor.cuda()
+
         word_embs = self.wlookup(word_id_tensor)
         upos_embs = self.tlookup(upos_id_tensor)
 
@@ -137,7 +143,7 @@ class Kiperwasser(nn.Module, Parser):
             arc_scores = arc_scores + torch.Tensor(margin)
 
         # since we are major
-        parsed_trees = self.decode(arc_scores.transpose(1, 2))
+        parsed_trees = self.decode(arc_scores.transpose(1, 2).cpu()) # in case it wans't alrdy on the CPU
 
         tree_for_rels = target_arcs if is_train else parsed_trees
         tree_for_rels[:, 0] = 0
