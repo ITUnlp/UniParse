@@ -145,6 +145,8 @@ class Model(object):
 
             it_samples = tqdm(samples) if verbose else samples
             for x, y in it_samples:
+                epoch_time = time.time()
+
                 # renew graph
                 backend.renew_cg()
 
@@ -186,8 +188,8 @@ class Model(object):
             no_punct_dev_las = metrics["nopunct_las"]
             #punct_dev_uas = metrics["uas"]
             #punct_dev_las = metrics["las"]
-
-            print("[%d] %0.5f, %0.5f " % (epoch, no_punct_dev_uas, no_punct_dev_las))
+            epoch_time = (time.time() - epoch_time)
+            print("[%d] - [%.fs] %0.5f, %0.5f " % (epoch, epoch_time, no_punct_dev_uas, no_punct_dev_las))
             sys.stdout.flush() # for python 2.7 compatibility
 
             # remove callbacks
