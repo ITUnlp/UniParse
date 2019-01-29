@@ -12,9 +12,8 @@ from uniparse.backend.pytorch_backend import _PytorchLossFunctions
 
 
 class BiRNN(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, gpu=False):
+    def __init__(self, input_size, hidden_size, num_layers):
         super(BiRNN, self).__init__()
-        self.gpu = gpu
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, bidirectional=True)
@@ -24,26 +23,25 @@ class BiRNN(nn.Module):
         h0 = torch.zeros(self.num_layers * 2, x.size(0), self.hidden_size)
         c0 = torch.zeros(self.num_layers * 2, x.size(0), self.hidden_size)
 
-        if self.gpu:
+        gpu = next(self.parameters()).is_cuda
+        if gpu:
             h0 = h0.cuda()
             c0 = c0.cuda()
 
-        out, _ = self.lstm(x, (h0, c0))  # out: tensor of shape (batch_size, seq_length, hidden_size*2)
+        out, _ = self.lstm(x.cuda() if gpu else x, (h0, c0))  # out: tensor of shape (batch_size, seq_length, hidden_size*2)
 
         return out
 
 
 class Kiperwasser(nn.Module, Parser):
-    def save_to_file(self, filename: str) -> None:
+    def save_to_file(self, filename):
         torch.save(self.state_dict(), filename)
 
-    def load_from_file(self, filename: str) -> None:
+    def load_from_file(self, filename):
         self.load_state_dict(torch.load(filename))
 
-    def __init__(self, vocab, gpu=False):
+    def __init__(self, vocab):
         super().__init__()
-
-        self.gpu = gpu
 
         upos_dim = 25
         word_dim = 100
@@ -60,8 +58,6 @@ class Kiperwasser(nn.Module, Parser):
         self.tlookup = nn.Embedding(self.word_count, upos_dim)
 
         self.deep_bilstm = BiRNN(word_dim+upos_dim, word_dim+upos_dim, 2)
-        if gpu:
-            self.deep_bilstm = self.deep_bilstm.cuda()
 
         # edge encoding
         self.edge_head = nn.Linear(bilstm_out, hidden_dim)
@@ -78,20 +74,7 @@ class Kiperwasser(nn.Module, Parser):
         self.l_scorer = nn.Linear(hidden_dim, vocab.label_count, bias=True)
 
         self._loss = _PytorchLossFunctions()
-
-    def init_weights(self):
-        nn.init.xavier_uniform_(self.wlookup.weight)
-        nn.init.xavier_uniform_(self.tlookup.weight)
-        nn.init.xavier_uniform_(self.plookup.weight)
-        nn.init.xavier_uniform_(self.edge_head.weight)
-        nn.init.xavier_uniform_(self.e_scorer.weight)
-        nn.init.xavier_uniform_(self.label_head.weight)
-        nn.init.xavier_uniform_(self.label_modi.weight)
-        nn.init.xavier_uniform_(self.l_scorer.weight)
-
-    def get_backend_name(self):
-        return "pytorch"
-        # return "dynet"
+        
 
     @staticmethod
     def _propability_map(matrix, dictionary):
@@ -106,16 +89,17 @@ class Kiperwasser(nn.Module, Parser):
 
         target_arcs = gold_arcs
         is_train = gold_arcs is not None
+        gpu = next(self.parameters()).is_cuda
 
-        # if is_train:
-            # c = self._propability_map(word_ids, self.i2c)
-            # drop_mask = np.greater(0.25/(c+0.25), np.random.rand(*word_ids.shape))
-            # word_ids = np.where(drop_mask, self._vocab.OOV, word_ids)  # replace with UNK / OOV
+        if is_train:
+            c = self._propability_map(word_ids, self.i2c)
+            drop_mask = np.greater(0.25/(c+0.25), np.random.rand(*word_ids.shape))
+            word_ids = np.where(drop_mask, self._vocab.OOV, word_ids)  # replace with UNK / OOV
 
         word_id_tensor = torch.LongTensor(word_ids)
         upos_id_tensor = torch.LongTensor(upos_ids)
 
-        if self.gpu:
+        if gpu:
             word_id_tensor = word_id_tensor.cuda()
             upos_id_tensor = upos_id_tensor.cuda()
 
@@ -147,7 +131,8 @@ class Kiperwasser(nn.Module, Parser):
                 for m in range(n):
                     h = target_arcs[bi, m]
                     margin[bi, m, h] -= 1
-            arc_scores = arc_scores + torch.Tensor(margin)
+            margin_tensor = torch.Tensor(margin).cuda() if gpu else torch.Tensor(margin)
+            arc_scores = arc_scores + margin_tensor
 
         # since we are major
         parsed_trees = self.decode(arc_scores.transpose(1, 2).cpu()) # in case it wans't alrdy on the CPU
@@ -164,12 +149,12 @@ class Kiperwasser(nn.Module, Parser):
         rel_arcs = torch.tanh(rel_modifiers + rel_heads)
 
         rel_scores = self.l_scorer(rel_arcs)
-        predicted_rels = rel_scores.argmax(-1).data.numpy()
+        predicted_rels = rel_scores.argmax(-1).cpu().data.numpy()
 
         loss = None
         if is_train:
-            arc_loss = self._loss.hinge(arc_scores, parsed_trees, gold_arcs, mask)
-            rel_loss = self._loss.hinge(rel_scores, predicted_rels, gold_rels, mask)
+            arc_loss = self._loss.hinge(arc_scores.cpu(), parsed_trees, gold_arcs, mask)
+            rel_loss = self._loss.hinge(rel_scores.cpu(), predicted_rels, gold_rels, mask)
 
             loss = arc_loss + rel_loss
         

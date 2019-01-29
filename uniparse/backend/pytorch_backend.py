@@ -41,24 +41,21 @@ class _PytorchLossFunctions(object):
         batch_size, n, d = scores.shape
         n_tokens = batch_size * n
 
+        gpu = scores.is_cuda
+        tensor_constructor = lambda x: torch.Tensor(x).cuda() if gpu else torch.Tensor(x)
+
         # this is merely to avoid the out of bounds problem
         # root has its head = -1. trying to 'pick_batch' will
         # will of course cause an issue
         golds[:, 0] = 0
-        if preds is not None:
-            preds[:, 0] = 0
-        else:
-            # margin at loss / prediction time
-            margin_mask = generate_mask((batch_size, n, d), golds)
-            mask_tensor = torch.Tensor(margin_mask)
-            scores = scores + mask_tensor
-            preds = scores.argmax(2).data.numpy()
-            preds = preds[None, :] if preds.ndim < 2 else preds
+        preds[:, 0] = 0
 
         # create boolean mask. 1s for all the wrong values and 0s for all the correct values
-        incorrect_mask = np.not_equal(preds, golds)
-        mask = np.logical_and(mask, incorrect_mask).astype(np.float64)
+        incorrect_mask = preds != golds
+        mask = (mask | incorrect_mask).astype(np.float64)
         incorrect_mask_tensor = torch.Tensor(mask.reshape(-1))
+        if gpu:
+            incorrect_mask_tensor = incorrect_mask_tensor.cuda()
 
         b = np.arange(n_tokens)
         pred_tree_tensor = preds.reshape(-1)
@@ -69,7 +66,8 @@ class _PytorchLossFunctions(object):
         pred_tensor = scores[b, pred_tree_tensor]
         gold_tensor = scores[b, gold_tree_tensor]
 
-        loss = torch.max(torch.zeros(n_tokens), pred_tensor - gold_tensor)
+        zeros = torch.zeros(n_tokens).cuda() if gpu else torch.zeros(n_tokens)
+        loss = torch.max(zeros, pred_tensor - gold_tensor)
         masked_loss = loss * incorrect_mask_tensor
 
         return torch.sum(masked_loss) / batch_size
@@ -89,7 +87,7 @@ class PyTorchBackend(object):
 
     @staticmethod
     def get_scalar(tensor):
-        values = tensor.data.numpy().astype(np.float64)
+        values = tensor.cpu().data.numpy().astype(np.float64)
         return float(values)
 
     @staticmethod

@@ -165,8 +165,9 @@ class Model(object):
                 pred_arcs, pred_rels, loss = self._parser((x, y))
                 # pred_arcs, pred_rels, pred_pos, loss = self._parser((x, y))
 
+                loss.forward() # forward compute
+                loss.backward() # backward compute
                 loss_value = backend.get_scalar(loss)
-                loss.backward()
 
                 backend.step(self._optimizer)
                 
@@ -216,8 +217,6 @@ class Model(object):
 
         # write to file
         uni_eval.write_predictions_to_file(
-
-
             predictions, reference_file=test_file, output_file=output_file, vocab=self._vocab)
 
         metrics = uni_eval.evaluate_files(output_file, test_file)
