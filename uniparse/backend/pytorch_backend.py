@@ -1,5 +1,6 @@
 import torch
 import torch.optim as optim
+import torch.nn.functional as F
 import numpy as np
 
 
@@ -117,3 +118,66 @@ class PyTorchBackend(object):
     def renew_cg():
         pass
 
+#####
+# Loss functions
+####
+
+def crossentropy(x, y, mask):
+    """
+        matrix based cross entropy
+    """
+    batch_size, n, d = scores.shape
+    n_tokens = batch_size * n
+
+    gpu = x.is_cuda
+
+    incorrect_mask = preds != golds
+    mask = (mask * incorrect_mask).astype(np.float64)
+    mask_tensor = torch.Tensor(mask.reshape(-1))
+    if gpu:
+        mask_tensor = mask_tensor.cuda()
+
+    flat_x = scores.view(n_tokens, d)
+    loss = F.cross_entropy(flat_x, y) * incorrect_mask
+    
+    return torch.sum(loss)
+
+
+
+def hinge(scores, preds, golds, margin, mask):
+    """
+        hinge loss function based on the definition of kiperwasser, goldberg
+    """
+    batch_size, n, d = scores.shape
+    n_tokens = batch_size * n
+
+    gpu = scores.is_cuda
+
+    # this is merely to avoid the out of bounds problem
+    # root has its head = -1. trying to 'pick_batch' will
+    # will of course cause an issue
+    golds[:, 0] = preds[:, 0] = 0
+
+    # create boolean mask. 1s for all the wrong values and 0s for all the correct values
+    incorrect_mask = preds != golds
+    mask = (mask & incorrect_mask).astype(np.float64)
+    incorrect_mask_tensor = torch.Tensor(mask.reshape(-1))
+    if gpu:
+        incorrect_mask_tensor = incorrect_mask_tensor.cuda()
+
+    b = np.arange(n_tokens)
+    pred_tree_tensor = preds.reshape(-1)
+    gold_tree_tensor = golds.reshape(-1)
+
+    # extract scores
+    scores = scores.view(n_tokens, d)
+    margin_tensor = torch.ones(1).cuda() if gpu else torch.ones(1)
+
+    pred_tensor = scores[b, pred_tree_tensor] + (margin_tensor + margin)
+    gold_tensor = scores[b, gold_tree_tensor]
+
+    zeros = torch.zeros(n_tokens).cuda() if gpu else torch.zeros(n_tokens)
+    loss = torch.max(zeros, pred_tensor - gold_tensor)
+    masked_loss = loss * incorrect_mask_tensor
+
+    return torch.sum(masked_loss) / batch_size
