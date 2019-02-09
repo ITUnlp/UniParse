@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from uniparse.types import Parser
+from uniparse.decoders import eisner
 
 from uniparse.backend.pytorch_backend import _PytorchLossFunctions
 
@@ -135,7 +136,8 @@ class Kiperwasser(nn.Module, Parser):
             arc_scores = arc_scores + margin_tensor
 
         # since we are major
-        parsed_trees = self.decode(arc_scores.transpose(1, 2).cpu()) # in case it wans't alrdy on the CPU
+        decoding_scores = arc_scores.transpose(1, 2).cpu().data.numpy().astype(np.float64)
+        parsed_trees = np.array([eisner(s) for s in decoding_scores])
 
         tree_for_rels = target_arcs if is_train else parsed_trees
         tree_for_rels[:, 0] = 0

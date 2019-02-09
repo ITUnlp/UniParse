@@ -33,11 +33,11 @@ def infer_backend(parameters):
     if inspect.isgenerator(parameters):
         return "pytorch"
 
-    raise ValueError("couldn't recognize backend")
+    raise ValueError("couldn't infer backend")
 
 
 class Model(object):
-    def __init__(self, model, decoder, loss, optimizer, strategy=None, vocab=None, backend=None):
+    def __init__(self, model, decoder=None, loss=None, optimizer=None, strategy=None, vocab=None, backend=None):
         self._model_uid = time.strftime("%m%d%H%M%S")
         self._parser = model
         self._optimizer = None
@@ -46,6 +46,12 @@ class Model(object):
 
         if strategy:
             print("DEPRECATED: model batching. In the future batch the data own your own and pass it to the model.")
+        
+        if decoder:
+            print("Decoder argument deprecated")
+        
+        if loss:
+            print("Loss function argument deprecated")
 
         if backend:
             # provided by user
@@ -71,15 +77,17 @@ class Model(object):
         else:
             self._optimizer = optimizer
 
-        # extract decoder
-        runtime_decoder = self._get_decoder(decoder)
-        self._parser.set_decoder(runtime_decoder)
-        self._runtime_decoder = runtime_decoder
+        if decoder:
+            # extract decoder
+            runtime_decoder = self._get_decoder(decoder)
+            self._parser.set_decoder(runtime_decoder)
+            self._runtime_decoder = runtime_decoder
 
         # extract loss functions
-        self.arc_loss, self.rel_loss = self._get_loss_functions(loss)
-        self._parser.set_loss_function(lambda a,b,c,d,e: self.arc_loss(a,None,c,e) + self.rel_loss(b,None,d,e))
-        self._parser.set_loss_object(self.backend.loss)
+        if loss:
+            self.arc_loss, self.rel_loss = self._get_loss_functions(loss)
+            self._parser.set_loss_function(lambda a,b,c,d,e: self.arc_loss(a,None,c,e) + self.rel_loss(b,None,d,e))
+            self._parser.set_loss_object(self.backend.loss)
 
 
 
