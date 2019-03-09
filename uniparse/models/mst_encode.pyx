@@ -1,3 +1,17 @@
+"""MST feature extractor."""
+
+# This implementation utilizes code and logic found in the project "Beta" by Marco Kuhlmann, licensed under CC 4.0. 
+# https://creativecommons.org/licenses/by/4.0/
+#
+# Specifically this code adapts the bit shifting strategy and features found in EdgeFeaturizer.java as a rewrite in 
+# Cython.
+#
+# The Beta project may be found at https://github.com/liu-nlp/beta
+#
+# The original bitshifting + feature extractor code may be found at
+#     https://github.com/liu-nlp/beta/blob/master/src/main/java/se/liu/ida/nlp/beta/EdgeFeaturizer.java.
+
+
 # cython: infer_types=True
 # cython: boundscheck=False
 # cython: wraparound=False
@@ -12,8 +26,6 @@ from cython.operator cimport postincrement as inc
 from libcpp.unordered_map cimport unordered_map as map
 from libcpp.vector cimport vector
 
-# type defs
-ctypedef vector[np.int64_t] int_vec
 
 cdef:
     np.uint64_t UPOS_OFFSET = 6 # ptb equires 50 labels, which can be represented in 6 bits
