@@ -3,7 +3,6 @@ import argparse
 from uniparse import Vocabulary
 from uniparse import Model
 
-from uniparse.callbacks import TensorboardLoggerCallback
 from uniparse.callbacks import ModelSaveCallback
 
 from uniparse.dataprovider import batch_by_buckets
@@ -37,7 +36,6 @@ train_data = vocab.tokenize_conll(arguments.train)
 dev_data = vocab.tokenize_conll(arguments.dev)
 test_data = vocab.tokenize_conll(arguments.test)
 
-#train_batches = scale_batch(train_data, scale=1000, cluster_count=40, padding_token=vocab.PAD, shuffle=True)
 
 train_batches = batch_by_buckets(train_data, batch_size=32, shuffle=True)
 dev_batches = batch_by_buckets(dev_data, batch_size=32, shuffle=True)
@@ -50,7 +48,7 @@ save_callback = ModelSaveCallback(arguments.model_dest)
 callbacks = [save_callback]
 
 # prep params
-parser = Model(model, decoder="eisner", loss="hinge", optimizer="adam", vocab=vocab)
+parser = Model(model, optimizer="adam", vocab=vocab)
 
 # todo ala
 # parser = Model(model, optimizer="adam", vocab=vocab)

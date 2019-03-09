@@ -18,8 +18,8 @@ import uniparse.evaluation.universal_eval as uni_eval
 import numpy as np
 import sklearn.utils
 
-
 import inspect
+
 
 def infer_backend(parameters):
     try:
@@ -46,10 +46,10 @@ class Model(object):
 
         if strategy:
             print("DEPRECATED: model batching. In the future batch the data own your own and pass it to the model.")
-        
+
         if decoder:
             print("Decoder argument deprecated")
-        
+
         if loss:
             print("Loss function argument deprecated")
 
@@ -61,7 +61,7 @@ class Model(object):
             model_parameters = model.parameters()
             backend_name = infer_backend(model_parameters)
             backend = backend_wrapper.init_backend(backend_name)
-        
+
         # i want to move this away form the model. the model knows which backend its using
         model.set_backend(backend)
         self.backend = backend
@@ -86,10 +86,9 @@ class Model(object):
         # extract loss functions
         if loss:
             self.arc_loss, self.rel_loss = self._get_loss_functions(loss)
-            self._parser.set_loss_function(lambda a,b,c,d,e: self.arc_loss(a,None,c,e) + self.rel_loss(b,None,d,e))
+            self._parser.set_loss_function(lambda a, b, c, d, e: self.arc_loss(a, None, c, e) + self.rel_loss(
+                b, None, d, e))
             self._parser.set_loss_object(self.backend.loss)
-
-
 
     def _get_optimizer(self, input_optimizer):
         # get setup optimizer
@@ -112,10 +111,7 @@ class Model(object):
     @staticmethod
     def _get_decoder(input_decoder):
         if isinstance(input_decoder, str):
-            decoder_options = {
-                "eisner": decoders.eisner,
-                "cle": decoders.cle
-            }
+            decoder_options = {"eisner": decoders.eisner, "cle": decoders.cle}
 
             if input_decoder not in decoder_options:
                 raise ValueError("decoder (%s) not available" % input_decoder)
@@ -147,7 +143,7 @@ class Model(object):
 
         backend = self.backend
         global_step = 0
-        for epoch in range(1, epochs+1):
+        for epoch in range(1, epochs + 1):
 
             samples = sklearn.utils.shuffle(samples)
 
@@ -161,8 +157,8 @@ class Model(object):
                 # words, lemmas, tags, chars = x
                 gold_arcs, gold_rels = y
                 words = x[0]
-                
-                # wat 
+
+                # wat
                 if len(words) < 1:
                     print("n words are less than 1.. whats happening")
                     continue
@@ -175,10 +171,10 @@ class Model(object):
                 pred_arcs, pred_rels, loss = self._parser((x, y))
 
                 loss_value = backend.get_scalar(loss)
-                loss.backward() # backward compute
+                loss.backward()  # backward compute
 
                 backend.step(self._optimizer)
-                
+
                 arc_correct = np.equal(pred_arcs, gold_arcs).astype(np.float32) * mask
                 arc_accuracy = np.sum(arc_correct) / num_tokens
 
@@ -199,7 +195,7 @@ class Model(object):
 
             epoch_time = int(time.time() - epoch_time)
             print("[%d][%ds] %0.5f, %0.5f " % (epoch, epoch_time, no_punct_dev_uas, no_punct_dev_las))
-            sys.stdout.flush() # for python 2.7 compatibility
+            sys.stdout.flush()  # for python 2.7 compatibility
 
             # remove callbacks
 
@@ -218,7 +214,7 @@ class Model(object):
     def evaluate(self, test_file, test_data):
         #stripped_filename = ntpath.basename(test_file)
         _, stripped_filename = tempfile.mkstemp()
-        output_file = stripped_filename 
+        output_file = stripped_filename
         #output_file = "%s_on_%s" % (self._model_uid, stripped_filename)
 
         # run parser on data
@@ -236,7 +232,7 @@ class Model(object):
 
     def run(self, samples):
         indices, batches = samples
-        
+
         backend = self.backend
 
         predictions = []
