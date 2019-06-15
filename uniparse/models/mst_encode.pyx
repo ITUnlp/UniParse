@@ -117,13 +117,7 @@ cdef class BetaEncodeHandler:
         cdef int MAX_RELS_FEATURE_COUNT = 28  # in our rel encoder there is only 14 features per element
 
         # indexes
-        cdef int i
-        cdef int j
-        cdef int m
-        cdef int h
-        cdef int b
-
-        # cdef int batch_size = forms.shape[0]
+        cdef int i, j, m, h, b
         cdef int n = forms.shape[0]
 
         # TODO: these can be native arrays
@@ -210,25 +204,10 @@ cdef class BetaEncodeHandler:
         np.uint64_t[:] succ_t,
         np.uint64_t[:,:,:] out) nogil:
 
-        cdef np.uint64_t fst_pred_t
-        cdef np.uint64_t snd_succ_t
-        cdef np.uint64_t fst_succ_t
-        cdef np.uint64_t snd_pred_t
-        
-        cdef np.uint64_t fst_t
-        cdef np.uint64_t snd_t
-        cdef np.uint64_t mid_t
-
-        cdef np.uint64_t fst
-        cdef np.uint64_t snd
-        cdef np.uint64_t isRA
-        cdef np.uint64_t attDist
-        cdef np.uint64_t distBool
-
-        cdef np.uint64_t src_w
-        cdef np.uint64_t src_t
-        cdef np.uint64_t tgt_w
-        cdef np.uint64_t tgt_t
+        cdef np.uint64_t fst_pred_t, snd_succ_t, fst_succ_t, snd_pred_t
+        cdef np.uint64_t fst_t, snd_t, mid_t
+        cdef np.uint64_t fst, snd, isRA, attDist, distBool
+        cdef np.uint64_t src_w, src_t, tgt_w, tgt_t
         
         cdef int fi = 0 # feature index
 

@@ -1,14 +1,17 @@
 import tensorflow as tf
 
+
 class Logger(object):
     """Logging in tensorboard without tensorflow ops."""
+
     def __init__(self, log_dir):
-        """Creates a summary writer logging to log_dir."""
+        """Create a summary writer logging to log_dir."""
         self.writer = tf.summary.FileWriter(log_dir)
         self.metrics = {}
 
     def __call__(self, tag, value, step):
         """Log a scalar variable.
+
         Parameter
         ----------
         tag : basestring

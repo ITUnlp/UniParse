@@ -1,3 +1,5 @@
+"""Vocabulary implementataion."""
+
 from collections import Counter
 
 import io
@@ -5,28 +7,17 @@ import re
 import pickle
 import numpy as np
 
-import logging
-logging.basicConfig(level=logging.DEBUG)
-
-def validate_line(line):
-    if line.startswith("#"):
-        return False
-    elif line == "\n":
-        return True
-    # think this is the one we want
-    elif not re.match(r'\d+\t', line):
-        return False
-    else:
-        return True
-
 
 class Vocabulary(object):
+    """Vocabulary encapsulataing token space for everything UD."""
+
     # Reserved token mappings
     PAD = 0
     ROOT = 1
     OOV = UNK = 2
 
     def __init__(self):
+        """Initialize empty vocabulary."""
         self._id2word = None
         self._word2id = None
         self._lemma2id = None
@@ -41,12 +32,12 @@ class Vocabulary(object):
         self._words_in_train_data = None
         self._pret_file = None
 
-    @staticmethod
-    def _normalize_word(word):
+    def _normalize_word(self, word):
         match = re.match("[0-9]+|[0-9]+\\.[0-9]+|[0-9]+[0-9,]+", word)
         return 'NUM' if match else word.lower()
 
     def fit(self, input_file, pretrained_embeddings=None, min_occur_count=0):
+        """Fit vocabulary to conll formatted file."""
         word_counter, lemma_set, tag_set, rel_set, char_set = self._collect_tokens(input_file)
 
         self._id2word = ['<pad>', '<root>', '<unk>']
@@ -64,12 +55,11 @@ class Vocabulary(object):
         self._id2rel += list(rel_set)
 
         # map the reversed index
-        reverse = lambda x: dict(zip(x, range(len(x))))
-        self._word2id = reverse(self._id2word)
-        self._lemma2id = reverse(self._id2lemma)
-        self._tag2id = reverse(self._id2tag)
-        self._rel2id = reverse(self._id2rel)
-        self._char2id = reverse(self._id2char)
+        self._word2id = self._reverse(self._id2word)
+        self._lemma2id = self._reverse(self._id2lemma)
+        self._tag2id = self._reverse(self._id2tag)
+        self._rel2id = self._reverse(self._id2rel)
+        self._char2id = self._reverse(self._id2char)
         self._id2freq = {wid: word_counter[word] for word, wid in self._word2id.items()}
         self._words_in_train_data = len(self._id2word)
 
@@ -80,40 +70,8 @@ class Vocabulary(object):
 
         return self
 
-    def load(self, filename):
-        f = open(filename, 'rb')
-        tmp_dict = pickle.load(f)
-        f.close()
-
-        self.__dict__.update(tmp_dict)
-
-    def save(self, filename):
-        f = open(filename, 'wb')
-        pickle.dump(self.__dict__, f, 2)
-        f.close()
-
-    def _collect_tokens(self, input_file):
-        word_counter = Counter()
-        lemma_set = set()
-        tag_set = set()
-        rel_set = set()
-        char_set = set()
-        with io.open(input_file, encoding="UTF-8") as f:
-            for line in f.readlines():
-                if not validate_line(line):
-                    continue
-
-                info = line.strip().split()
-                if len(info) == 10:
-                    word, lemma, tag, _, rel, chars = self._parse_conll_line(info, tokenize=False)
-                    word_counter[word] += 1
-                    lemma_set.add(lemma)
-                    tag_set.add(tag)
-                    char_set.update(chars)
-                    if rel != 'root':
-                        rel_set.add(rel)
-
-        return word_counter, lemma_set, tag_set, rel_set, char_set
+    def _reverse(self, seq):
+        return dict(zip(seq, range(len(seq))))
 
     def _add_pret_words(self, embedding_file):
         words_in_train_data = set(self._word2id.keys())
@@ -132,9 +90,101 @@ class Vocabulary(object):
                 self._word2id[word] = offset + counter
                 counter += 1
 
-    def load_embedding(self, normalize=True):
-        """ load embeddings """
+    def _collect_tokens(self, input_file):
+        word_counter = Counter()
+        lemma_set = set()
+        tag_set = set()
+        rel_set = set()
+        char_set = set()
+        with io.open(input_file, encoding="UTF-8") as f:
+            for line in f.readlines():
+                if not _validate_line(line):
+                    continue
 
+                info = line.strip().split()
+                if len(info) == 10:
+                    word, lemma, tag, _, rel, chars = self._parse_conll_line(info, tokenize=False)
+                    word_counter[word] += 1
+                    lemma_set.add(lemma)
+                    tag_set.add(tag)
+                    char_set.update(chars)
+                    if rel != 'root':
+                        rel_set.add(rel)
+
+        return word_counter, lemma_set, tag_set, rel_set, char_set
+
+    def _parse_conll_line(self, info, tokenize):
+        word = self._normalize_word(info[1].lower())
+
+        lemma = info[2].lower()
+        tag = info[3]
+        head = int(info[6])
+        rel = info[7]
+        chars = list(info[1])
+
+        if not tokenize:
+            return word, lemma, tag, head, rel, chars
+
+        t_word = self._word2id.get(word, self.OOV)
+        t_lemma = self._lemma2id.get(lemma, self.OOV)
+        t_tag = self._tag2id.get(tag, self.OOV)
+        t_rel = self._rel2id.get(rel, self.OOV)
+        t_chars = [self.char2id(c) for c in chars]
+
+        return t_word, t_lemma, t_tag, head, t_rel, t_chars
+
+    def _read_conll(self, input_file, tokenize=True):
+        word_root = self.ROOT
+        lemma_root = self.ROOT
+        tag_root = self.ROOT
+        rel_root = self.ROOT
+        char_root = [self.ROOT]
+        root_head = -1
+
+        sents = []
+        words, lemmas, tags, heads, rels, chars = \
+            [word_root], [lemma_root], [tag_root], [root_head], [rel_root], [char_root]
+
+        with io.open(input_file, encoding="UTF-8") as f:
+            for line in f.readlines():
+                if not _validate_line(line):
+                    continue
+
+                info = line.strip().split("\t")
+                if len(info) == 10:
+                    word, lemma, tag, head, rel, characters = self._parse_conll_line(info, tokenize=tokenize)
+                    words.append(word)
+                    lemmas.append(lemma)
+                    tags.append(tag)
+                    heads.append(head)
+                    rels.append(rel)
+                    chars.append(characters)
+                else:
+                    sent = (words, lemmas, tags, heads, rels, chars)
+                    sents.append(sent)
+
+                    words, lemmas, tags, heads, rels, chars = \
+                        [word_root], [lemma_root], [tag_root], [root_head], [rel_root], [char_root]
+
+        return sents
+
+    def load(self, filename):
+        """Load vocabulary from file."""
+        with open(filename, 'rb') as f:
+            tmp_dict = pickle.load(f)
+
+        self.__dict__.update(tmp_dict)
+        return self
+
+    def save(self, filename):
+        """Save vocabulary to file."""
+        with open(filename, 'wb') as f:
+            pickle.dump(self.__dict__, f, 2)
+
+        return self
+
+    def load_embedding(self, normalize=True):
+        """Load embeddings."""
         assert self._pret_file is not None, "no embedding to load...."
 
         embs = [[]] * len(self._word2id.keys())
@@ -163,80 +213,20 @@ class Vocabulary(object):
 
         return pret_embs
 
-    def tokenize_conll(self, file):
-        sentences = self._read_conll(file, tokenize=True)
+    def tokenize_conll(self, filename):
+        """Read and tokenize conllu formatted file."""
+        sentences = self._read_conll(filename, tokenize=True)
         return sentences
 
-    def _parse_conll_line(self, info, tokenize):
-        word = self._normalize_word(info[1].lower())
-            
-        lemma = info[2].lower()
-        tag = info[3]
-        head = int(info[6])
-        rel = info[7]
-        chars = list(info[1])
+    def get_mask(self, x):
+        """Return boolean mask for padded tokens. Requires 2D input matrix."""
+        mask = np.greater(x, self.ROOT)
+        return mask
 
-        if not tokenize:
-            return word, lemma, tag, head, rel, chars
-
-        t_word = self._word2id.get(word, self.OOV)
-        t_lemma = self._lemma2id.get(lemma, self.OOV)
-        t_tag = self._tag2id.get(tag, self.OOV)
-        # head = ... doesn't change :)
-        t_rel = self._rel2id.get(rel, self.OOV)
-        t_chars = [self.char2id(c) for c in chars]
-
-        # mappings = [
-        #     (word, t_word, "form"),
-        #     #(t_lemma, "lemma"),
-        #     (tag, t_tag, "tag"),
-        #     (rel, t_rel, "relation")
-        
-        # ]
-        # oov_errors = [(sval, name) for sval, val, name in mappings if val == self.OOV]
-
-        # Log oov
-        # if oov_errors:
-        #     for token, _type in oov_errors:
-        #         logging.info("[%s]: %s -> OOV " % (_type, token))
-
-        return t_word, t_lemma, t_tag, head, t_rel, t_chars
-
-
-    def _read_conll(self, input_file, tokenize = True):
-        word_root = self.ROOT
-        lemma_root = self.ROOT
-        tag_root = self.ROOT
-        rel_root = self.ROOT
-        char_root = [self.ROOT]
-        root_head = -1
-
-        sents = []
-        words, lemmas, tags, heads, rels, chars = \
-            [word_root], [lemma_root], [tag_root], [root_head], [rel_root], [char_root]
-
-        with io.open(input_file, encoding="UTF-8") as f:
-            for line in f.readlines():
-                if not validate_line(line):
-                    continue
-
-                info = line.strip().split("\t")
-                if len(info) == 10:
-                    word, lemma, tag, head, rel, characters = self._parse_conll_line(info, tokenize=tokenize)
-                    words.append(word)
-                    lemmas.append(lemma)
-                    tags.append(tag)
-                    heads.append(head)
-                    rels.append(rel)
-                    chars.append(characters)
-                else:
-                    sent = (words, lemmas, tags, heads, rels, chars)
-                    sents.append(sent)
-
-                    words, lemmas, tags, heads, rels, chars = \
-                        [word_root], [lemma_root], [tag_root], [root_head], [rel_root], [char_root]
-
-        return sents
+    def get_lengths(self, word_ids):
+        """Return sentence lengths from 2D input matrix."""
+        batch_size, n = word_ids.shape
+        return n - np.argmax(word_ids[:, ::-1] > self.PAD, axis=1)
 
     def word2id(self, x):
         return self._word2id.get(x, self.OOV)
@@ -291,3 +281,15 @@ class Vocabulary(object):
     @property
     def rel_size(self):
         return len(self._rel2id)
+
+
+def _validate_line(line):
+    if line.startswith("#"):
+        return False
+    elif line == "\n":
+        return True
+    # think this is the one we want
+    elif not re.match(r'\d+\t', line):
+        return False
+    else:
+        return True

@@ -64,7 +64,6 @@ cdef dict chu_liu_edmonds(DTYPE_t[:,:] scores,
 
     # need to construct for each node list of nodes they represent (here only!)
     cdef int nw = curr_nodes.shape[0] - 1
-    # nw = np.size(curr_nodes) - 1
 
     # create best graph
     cdef INDEX_DTYPE_t[:] par = -np.ones(nw+1, dtype=INDEX_DTYPE)

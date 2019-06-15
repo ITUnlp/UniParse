@@ -26,7 +26,6 @@ def generate_mask(shape, target):
 
 
 class _DynetLossFunctions(object):
-
     @staticmethod  # actually used for arcs on
     def kiperwasser_loss(scores, preds, golds, mask, batch_size_norm=True):
         (h, m), batch_size = scores.dim()
@@ -55,13 +54,16 @@ class _DynetLossFunctions(object):
         pred_tensor = dy.pick_batch(scores, dynet_flatten(preds))
         gold_tensor = dy.pick_batch(scores, dynet_flatten(golds))
 
-        #loss = pred_tensor - gold_tensor
+        # loss = pred_tensor - gold_tensor
         zero = dy.zeros(1, batch_size=m * batch_size)
         loss = dy.bmax(zero, pred_tensor - gold_tensor)
         masked_loss = loss * incorrect_mask_tensor
 
-        return dy.sum_batches(masked_loss) / batch_size if batch_size_norm else dy.sum_batches(masked_loss)
-#        return dy.sum_batches(masked_loss) / batch_size
+        return (
+            dy.sum_batches(masked_loss) / batch_size
+            if batch_size_norm
+            else dy.sum_batches(masked_loss)
+        )
 
     @staticmethod
     def crossentropy(x, pred_y, y, mask, batch_size_norm=True):
@@ -71,7 +73,11 @@ class _DynetLossFunctions(object):
         batch_size, seq_len = y.shape
         (d, _), _ = x.dim()
 
-        y[:, 0] = 0  # to ensure that we don't use the -1 output of a decoder / expected output
+        y[
+            :, 0
+        ] = (
+            0
+        )  # to ensure that we don't use the -1 output of a decoder / expected output
 
         mask_1d = dynet_flatten(mask.T)
         mask_1d_tensor = dy.inputTensor(mask_1d, batched=True)
@@ -84,7 +90,7 @@ class _DynetLossFunctions(object):
 
         return arc_loss
 
-    @staticmethod # actually used for labels
+    @staticmethod  # actually used for labels
     def kiperwasser_hinge(x, pred_y, y, mask):
         (label_count, n), batch_size = x.dim()
 
@@ -96,7 +102,9 @@ class _DynetLossFunctions(object):
                     continue
                 pred_vec = dy.pick(batch_score, i, dim=1)
                 gold_index = y[bi, i]
-                non_golds = [dy.pick(pred_vec, l) for l in range(label_count) if l != gold_index]
+                non_golds = [
+                    dy.pick(pred_vec, l) for l in range(label_count) if l != gold_index
+                ]
                 wrong_value = dy.emax(non_golds)
                 correct_value = pred_vec[int(gold_index)]
                 loss = dy.bmax(dy.ones(1) + wrong_value - correct_value, dy.zeros(1))
@@ -142,12 +150,17 @@ class _DynetLossFunctions(object):
         pred_tensor = dy.pick_batch(scores, dynet_flatten(preds))
         gold_tensor = dy.pick_batch(scores, dynet_flatten(golds))
 
-        loss = dy.bmax(dy.zeros(1, batch_size=m * batch_size), pred_tensor - gold_tensor)
+        loss = dy.bmax(
+            dy.zeros(1, batch_size=m * batch_size), pred_tensor - gold_tensor
+        )
         masked_loss = loss * incorrect_mask_tensor
 
         # return dy.sum_batches(masked_loss) / batch_size
-        return dy.sum_batches(masked_loss) / batch_size if batch_size_norm else dy.sum_batches(masked_loss)
-
+        return (
+            dy.sum_batches(masked_loss) / batch_size
+            if batch_size_norm
+            else dy.sum_batches(masked_loss)
+        )
 
 
 class DynetBackend(object):
@@ -158,7 +171,7 @@ class DynetBackend(object):
 
     @staticmethod
     def to_numpy(expression):
-        """ Convert expression into numpy ndarray """
+        """Convert expression into numpy ndarray."""
         values = expression.npvalue().astype(np.float64)
         # Since dynet squeezes the batch dimensions if it is equals to 1, we expand
         # to get a dimensionality of at least 3 if the the dimensionality is correct,
@@ -192,8 +205,6 @@ class DynetBackend(object):
         optimizer.update()
 
 
-
-
 ##############
 # New!!
 ##############
@@ -219,7 +230,7 @@ def tree_hinge_loss(scores, preds, golds, mask, margin=1, batch_size_norm=True):
     golds = dynet_flatten(golds.T)
 
     # create boolean mask. 1s for all the wrong values and 0s for all the correct values
-    # we will use this to mask out loss for correct predictions. This has the caviat that 
+    # we will use this to mask out loss for correct predictions. This has the caviat that
     # if we predict correctly, there is no signal that the 2nd place is to close.
     # incorrect_mask = dynet_flatten(preds != golds)
     # incorrect_mask_tensor = dy.inputTensor(incorrect_mask, batched=True)
@@ -238,7 +249,7 @@ def tree_hinge_loss(scores, preds, golds, mask, margin=1, batch_size_norm=True):
     gold_tree_scores = dy.reshape(gold_tensor, (m,), batch_size=batch_size)
 
     # compute difference of tree scores
-    tree_diff = dy.sum_elems(pred_tree_scores) - dy.sum_elems(gold_tree_scores)    
+    tree_diff = dy.sum_elems(pred_tree_scores) - dy.sum_elems(gold_tree_scores)
 
     # compute loss (by max'in the bastard over zero)
     # if p+1 < b = no loss (cuz negative)
@@ -248,9 +259,118 @@ def tree_hinge_loss(scores, preds, golds, mask, margin=1, batch_size_norm=True):
 
     # mask out the predictions thats where indeed lo
     # this doesn't work for the tree version??? no?!
-    #masked_loss = loss * incorrect_mask_tensor
+    # masked_loss = loss * incorrect_mask_tensor
 
     if batch_size_norm:
         return dy.sum_batches(loss) / batch_size
     else:
         return dy.sum_batches(loss)
+
+
+def kiperwasser_loss(scores, preds, golds, mask, batch_size_norm=True):
+    (h, m), batch_size = scores.dim()
+
+    # given that scores are shaped ((h,m), batch)
+    # we can reshape it to the shape ((h,), m*batch)
+    # where each batch is a modifier with
+    # respect to its heads
+    scores = dy.reshape(scores, (h,), batch_size=m * batch_size)
+
+    # this is merely to avoid the out of bounds problem
+    # root has its head = -1. trying to 'pick_batch' will
+    # will of course cause an issue
+    preds[:, 0] = golds[:, 0] = 0
+
+    # to satisfy dynet being column major as opposed to numpy (row major)
+    preds = preds.T
+    golds = golds.T
+
+    # create boolean mask. 1s for all the wrong values and 0s for all the correct values
+    # xor mask with argument mask
+    incorrect_mask = preds != golds
+    mask = incorrect_mask * mask.T if mask is not None else incorrect_mask
+    incorrect_mask_tensor = dy.inputTensor(dynet_flatten(mask), batched=True)
+
+    # masks for padding and root
+    pred_tensor = dy.pick_batch(scores, dynet_flatten(preds))
+    gold_tensor = dy.pick_batch(scores, dynet_flatten(golds))
+
+    # loss = pred_tensor - gold_tensor
+    zero = dy.zeros(1, batch_size=m * batch_size)
+    loss = dy.bmax(zero, pred_tensor - gold_tensor)
+    masked_loss = loss * incorrect_mask_tensor
+
+    return (
+        dy.sum_batches(masked_loss) / batch_size
+        if batch_size_norm
+        else dy.sum_batches(masked_loss)
+    )
+
+
+def crossentropy(x, pred_y, y, mask, batch_size_norm=True):
+    # for now lets assume the inverted nature
+    # => this means batch last, like (head,modi,batch_size) or (labels, modi, batch_size)
+    num_tokens = int(np.sum(mask))
+    batch_size, seq_len = y.shape
+    (d, _), _ = x.dim()
+
+    y[
+        :, 0
+    ] = 0  # to ensure that we don't use the -1 output of a decoder / expected output
+
+    mask_1d = dynet_flatten(mask.T)
+    mask_1d_tensor = dy.inputTensor(mask_1d, batched=True)
+
+    targets_1d = dynet_flatten(y.T)
+    flat_x = dy.reshape(x, (d,), seq_len * batch_size)
+
+    losses = dy.pickneglogsoftmax_batch(flat_x, targets_1d)
+    arc_loss = dy.sum_batches(losses * mask_1d_tensor) / num_tokens
+
+    return arc_loss
+
+
+def hinge(scores, preds, golds, mask, batch_size_norm=True):
+    (h, m), batch_size = scores.dim()
+
+    # given that scores are shaped ((h,m), batch)
+    # we can reshape it to the shape ((h,), m*batch)
+    # where each batch is a modifier with
+    # respect to its heads
+    scores = dy.reshape(scores, (h,), batch_size=m * batch_size)
+
+    # this is merely to avoid the out of bounds problem
+    # root has its head = -1. trying to 'pick_batch' will
+    # will of course cause an issue
+    golds[:, 0] = 0
+    if preds is not None:
+        preds[:, 0] = 0
+        preds = preds.T
+    else:
+        _mask = generate_mask((h, m, batch_size), golds)
+        mask_tensor = dy.inputTensor(_mask, batched=True)
+        scores = scores + mask_tensor
+        preds = scores.npvalue().argmax(0)
+        preds = preds[:, None] if preds.ndim < 2 else preds
+
+    # to satisfy dynet being column major as oppposed to numpy being row major
+    golds = golds.T
+
+    # create boolean mask. 1s for all the wrong values and 0s for all the correct values
+    incorrect_mask = preds != golds
+    mask = incorrect_mask * mask.T if mask is not None else incorrect_mask
+    incorrect_mask_tensor = dy.inputTensor(dynet_flatten(mask), batched=True)
+
+    # masks for padding and root
+    pred_tensor = dy.pick_batch(scores, dynet_flatten(preds))
+    gold_tensor = dy.pick_batch(scores, dynet_flatten(golds))
+
+    loss = dy.bmax(dy.zeros(1, batch_size=m * batch_size), pred_tensor - gold_tensor)
+    masked_loss = loss * incorrect_mask_tensor
+
+    # return dy.sum_batches(masked_loss) / batch_size
+    return (
+        dy.sum_batches(masked_loss) / batch_size
+        if batch_size_norm
+        else dy.sum_batches(masked_loss)
+    )

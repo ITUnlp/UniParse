@@ -17,7 +17,9 @@ class BiRNN(nn.Module):
         super(BiRNN, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, bidirectional=True)
+        self.lstm = nn.LSTM(
+            input_size, hidden_size, num_layers, batch_first=True, bidirectional=True
+        )
 
     def forward(self, x):
         # Set initial cell states
@@ -29,7 +31,9 @@ class BiRNN(nn.Module):
             h0 = h0.cuda()
             c0 = c0.cuda()
 
-        out, _ = self.lstm(x.cuda() if gpu else x, (h0, c0))  # out: tensor of shape (batch_size, seq_length, hidden_size*2)
+        out, _ = self.lstm(
+            x.cuda() if gpu else x, (h0, c0)
+        )  # out: tensor of shape (batch_size, seq_length, hidden_size*2)
 
         return out
 
@@ -47,7 +51,7 @@ class Kiperwasser(nn.Module, Parser):
         upos_dim = 25
         word_dim = 100
         hidden_dim = 100
-        bilstm_out = (word_dim+upos_dim) * 2
+        bilstm_out = (word_dim + upos_dim) * 2
 
         self.word_count = vocab.vocab_size
         self.upos_count = vocab.upos_size
@@ -58,7 +62,7 @@ class Kiperwasser(nn.Module, Parser):
         self.wlookup = nn.Embedding(self.word_count, word_dim)
         self.tlookup = nn.Embedding(self.word_count, upos_dim)
 
-        self.deep_bilstm = BiRNN(word_dim+upos_dim, word_dim+upos_dim, 2)
+        self.deep_bilstm = BiRNN(word_dim + upos_dim, word_dim + upos_dim, 2)
 
         # edge encoding
         self.edge_head = nn.Linear(bilstm_out, hidden_dim)
@@ -75,16 +79,28 @@ class Kiperwasser(nn.Module, Parser):
         self.l_scorer = nn.Linear(hidden_dim, vocab.label_count, bias=True)
 
         self._loss = _PytorchLossFunctions()
-        
 
     @staticmethod
     def _propability_map(matrix, dictionary):
         return np.vectorize(dictionary.__getitem__)(matrix)
 
+    def _augmented_scores(self, scores, y, gpu):
+        batch_size, n, n = scores.shape
+        margin = np.ones((batch_size, n, n))
+        for bi in range(batch_size):
+            for m in range(n):
+                h = y[bi, m]
+                margin[bi, m, h] -= 1
+
+        margin_tensor = torch.Tensor(margin).cuda() if gpu else torch.Tensor(margin)
+        scores = scores + margin_tensor
+
+        return scores
+
     def forward(self, x):
         (word_ids, upos_ids), (gold_arcs, gold_rels) = x
-        
-        mask = np.greater(word_ids, self._vocab.ROOT)        
+
+        mask = np.greater(word_ids, self._vocab.ROOT)
 
         batch_size, n = word_ids.shape
 
@@ -94,8 +110,10 @@ class Kiperwasser(nn.Module, Parser):
 
         if is_train:
             c = self._propability_map(word_ids, self.i2c)
-            drop_mask = np.greater(0.25/(c+0.25), np.random.rand(*word_ids.shape))
-            word_ids = np.where(drop_mask, self._vocab.OOV, word_ids)  # replace with UNK / OOV
+            drop_mask = np.greater(0.25 / (c + 0.25), np.random.rand(*word_ids.shape))
+            word_ids = np.where(
+                drop_mask, self._vocab.OOV, word_ids
+            )  # replace with UNK / OOV
 
         word_id_tensor = torch.LongTensor(word_ids)
         upos_id_tensor = torch.LongTensor(upos_ids)
@@ -126,17 +144,12 @@ class Kiperwasser(nn.Module, Parser):
 
         # Loss augmented inference
         if is_train:
-            target_arcs[:, 0] = 0  # this guy contains negatives.. watch out for that ....
-            margin = np.ones((batch_size, n, n))
-            for bi in range(batch_size):
-                for m in range(n):
-                    h = target_arcs[bi, m]
-                    margin[bi, m, h] -= 1
-            margin_tensor = torch.Tensor(margin).cuda() if gpu else torch.Tensor(margin)
-            arc_scores = arc_scores + margin_tensor
+            arc_scores = self._augmented_scores(arc_scores, gold_arcs)
 
         # since we are major
-        decoding_scores = arc_scores.transpose(1, 2).cpu().data.numpy().astype(np.float64)
+        decoding_scores = (
+            arc_scores.transpose(1, 2).cpu().data.numpy().astype(np.float64)
+        )
         parsed_trees = np.array([eisner(s) for s in decoding_scores])
 
         tree_for_rels = target_arcs if is_train else parsed_trees
@@ -156,10 +169,11 @@ class Kiperwasser(nn.Module, Parser):
         loss = None
         if is_train:
             arc_loss = self._loss.hinge(arc_scores.cpu(), parsed_trees, gold_arcs, mask)
-            rel_loss = self._loss.hinge(rel_scores.cpu(), predicted_rels, gold_rels, mask)
+            rel_loss = self._loss.hinge(
+                rel_scores.cpu(), predicted_rels, gold_rels, mask
+            )
 
             loss = arc_loss + rel_loss
-        
-        return parsed_trees, predicted_rels, loss
 
+        return parsed_trees, predicted_rels, loss
 

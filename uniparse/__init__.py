@@ -4,7 +4,8 @@ import numpy as np
 from uniparse.vocabulary import Vocabulary
 from uniparse.model import Model
 from uniparse.decoders.tarjan import Tarjan
-#from uniparse.utility.tensorboard_logging import Logger
+
+# from uniparse.utility.tensorboard_logging import Logger
 
 
 def arc_argmax(parse_probs, length, tokens_to_keep, ensure_tree=True):
@@ -14,10 +15,10 @@ def arc_argmax(parse_probs, length, tokens_to_keep, ensure_tree=True):
     if ensure_tree:
         I = np.eye(len(tokens_to_keep))
         # block loops and pad heads
-        parse_probs = parse_probs * tokens_to_keep * (1-I)
+        parse_probs = parse_probs * tokens_to_keep * (1 - I)
         parse_preds = np.argmax(parse_probs, axis=1)
         tokens = np.arange(1, length)
-        roots = np.where(parse_preds[tokens] == 0)[0]+1
+        roots = np.where(parse_preds[tokens] == 0)[0] + 1
         # ensure at least one root
         if len(roots) < 1:
             # The current root probabilities
@@ -35,9 +36,9 @@ def arc_argmax(parse_probs, length, tokens_to_keep, ensure_tree=True):
             # The probabilities of the current heads
             root_probs = parse_probs[roots, 0]
             # Set the probability of depending on the root zero
-            parse_probs[roots,0] = 0
+            parse_probs[roots, 0] = 0
             # Get new potential heads and their probabilities
-            new_heads = np.argmax(parse_probs[roots][:, tokens], axis=1)+1
+            new_heads = np.argmax(parse_probs[roots][:, tokens], axis=1) + 1
             new_head_probs = parse_probs[roots, new_heads] / root_probs
             # Select the most probable root
             new_root = roots[np.argmin(new_head_probs)]
@@ -65,7 +66,7 @@ def arc_argmax(parse_probs, length, tokens_to_keep, ensure_tree=True):
                 non_heads = np.array(list(dependents))
                 parse_probs[np.repeat(cycle, len(non_heads)), np.repeat([non_heads], len(cycle), axis=0).flatten()] = 0
                 # Get new potential heads and their probabilities
-                new_heads = np.argmax(parse_probs[cycle][:, tokens], axis=1)+1
+                new_heads = np.argmax(parse_probs[cycle][:, tokens], axis=1) + 1
                 new_head_probs = parse_probs[cycle, new_heads] / old_head_probs
                 # Select the most probable change
                 change = np.argmax(new_head_probs)
@@ -93,9 +94,9 @@ def rel_argmax(rel_probs, length, ensure_tree=True):
         root = 1
         tokens = np.arange(1, length)
         rel_preds = np.argmax(rel_probs, axis=1)
-        roots = np.where(rel_preds[tokens] == root)[0]+1
+        roots = np.where(rel_preds[tokens] == root)[0] + 1
         if len(roots) < 1:
-            rel_preds[1+np.argmax(rel_probs[tokens,root])] = root
+            rel_preds[1 + np.argmax(rel_probs[tokens, root])] = root
         elif len(roots) > 1:
             root_probs = rel_probs[roots, root]
             rel_probs[roots, root] = 0

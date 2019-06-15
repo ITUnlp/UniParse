@@ -6,9 +6,8 @@ from uniparse import Model
 from uniparse.callbacks import ModelSaveCallback
 
 from uniparse.dataprovider import batch_by_buckets
-from uniparse.dataprovider import scale_batch
 
-from uniparse.models.dynet_models.kiperwasser import Kiperwasser
+from uniparse.models.dynet.kiperwasser import Kiperwasser
 
 parser = argparse.ArgumentParser()
 
@@ -16,8 +15,8 @@ parser.add_argument("--train", required=True)
 parser.add_argument("--dev", required=True)
 parser.add_argument("--test", required=True)
 parser.add_argument("--epochs", type=int, default=30)
-parser.add_argument("--model_dest", required=True)
-parser.add_argument("--vocab_dest")
+parser.add_argument("--model", required=True)
+parser.add_argument("--vocab")
 
 arguments, unknown = parser.parse_known_args()
 
@@ -26,9 +25,9 @@ vocab = Vocabulary()
 vocab = vocab.fit(arguments.train)
 
 # save vocab for reproducability later
-if arguments.vocab_dest:
-    print("> saving vocab to", arguments.vocab_dest)
-    vocab.save(arguments.vocab_dest)
+if arguments.vocab:
+    print("> saving vocab to", arguments.vocab)
+    vocab.save(arguments.vocab)
 
 # prep data
 print(">> Loading in data")
@@ -44,7 +43,7 @@ test_batches = batch_by_buckets(test_data, batch_size=32, shuffle=False)
 # instantiate model
 model = Kiperwasser(vocab)
 
-save_callback = ModelSaveCallback(arguments.model_dest)
+save_callback = ModelSaveCallback(arguments.model)
 callbacks = [save_callback]
 
 # prep params
@@ -54,7 +53,7 @@ parser = Model(model, optimizer="adam", vocab=vocab)
 # parser = Model(model, optimizer="adam", vocab=vocab)
 
 parser.train(train_batches, arguments.dev, dev_batches, epochs=n_epochs, callbacks=callbacks, verbose=True)
-parser.load_from_file(arguments.model_dest)
+parser.load_from_file(arguments.model)
 
 metrics = parser.evaluate(arguments.test, test_batches)
 test_UAS = metrics["nopunct_uas"]

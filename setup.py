@@ -1,5 +1,4 @@
-""" setup script """
-import os
+"""UniParse install/setup script."""
 import platform
 
 from Cython.Distutils import build_ext
@@ -9,6 +8,7 @@ import numpy as np
 
 
 def build_extra_compile_args():
+    """Infer arguments based on operating system."""
     args = ['-O3', "-ffast-math", "-march=native"]
 
     system_name = platform.system()
@@ -17,30 +17,26 @@ def build_extra_compile_args():
     elif system_name == "Linux":
         args.append("-std=c++0x")
     else:
-        raise ValueError("dno what windows/other is")
+        raise ValueError("Currently no support for operation system %s." % system_name)
 
     return args
 
 
 compile_arguments = build_extra_compile_args()
 
-algorithms = [
-    ("uniparse.decoders.eisner", "uniparse/decoders/eisner.pyx"),
-    ("uniparse.decoders.cle", "uniparse/decoders/cle.pyx"),
-    ("uniparse.models.mst_encode", "uniparse/models/mst_encode.pyx")
-]
+algorithms = [("uniparse.decoders.eisner", "uniparse/decoders/eisner.pyx"),
+              ("uniparse.decoders.cle", "uniparse/decoders/cle.pyx"),
+              ("uniparse.models.mst_encode", "uniparse/models/mst_encode.pyx"),
+              ("uniparse.models.mst_encode2", "uniparse/models/mst_encode2.pyx")]
 extensions = []
 for name, location in algorithms:
     e = Extension(
-        name=name, 
-        sources=[location], 
+        name=name,
+        sources=[location],
         extra_compile_args=compile_arguments,
         include_dirs=[np.get_include()],
-        language='c++'
-    )
+        language='c++')
     extensions.append(e)
-
-
 
 with open("README.md", "rb") as f:
     README = f.read().decode("utf-8")
@@ -50,15 +46,14 @@ setup(
     version=0.1,
     description="Universal graph based dependency parsing prototype framework",
     long_description=README,
-    author="NLP group @ the IT University of Copenhagen",
+    author="Daniel Varab",
     author_email="djam@itu",
     url="https://github.com/ITUnlp/UniParse",
     install_requires=['numpy', 'scipy', 'sklearn', 'tqdm', 'cython'],
-    cmdclass={ 'build_ext': build_ext },
-    ext_modules=extensions
-    # entry_points={
-    #     "console_scripts": [
-    #         "ketl=ketl.cli:main",
-    #     ],
-    # })
-)
+    cmdclass={'build_ext': build_ext},
+    ext_modules=extensions,
+    entry_points={
+        "console_scripts": [
+            "uniparse=uniparse.cli:main",
+        ],
+    })
