@@ -4,7 +4,7 @@ import numpy as np
 from uniparse.vocabulary import Vocabulary
 from uniparse.model import Model
 from uniparse.decoders.tarjan import Tarjan
-from uniparse.utility.tensorboard_logging import Logger
+# from uniparse.utility.tensorboard_logging import Logger
 
 
 def arc_argmax(parse_probs, length, tokens_to_keep, ensure_tree=True):
