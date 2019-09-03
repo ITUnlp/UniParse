@@ -150,7 +150,7 @@ class DependencyParser(Parser):
 
         rel_arcs = []
         for m_indx, (modifier, gold) in enumerate(zip(rel_modifiers, golds)):
-            rel_arc = modifier + gold + self.label_bias.expr()
+            rel_arc = dy.tanh(modifier + gold + self.label_bias.expr())
             rel_arcs.append(rel_arc)
 
         rel_arcs = dy.concatenate_cols(rel_arcs)
