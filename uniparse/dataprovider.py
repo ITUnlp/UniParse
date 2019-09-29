@@ -1,4 +1,5 @@
-from typing import *
+""""""
+
 from collections import defaultdict, namedtuple
 
 import numpy as np
@@ -7,7 +8,8 @@ import sklearn.utils
 from sklearn.cluster import KMeans
 
 
-def gen_pad_3d(x: Iterable, padding_token: int):
+def gen_pad_3d(x, padding_token):
+    """Pad a 3D token matrix."""
     if not isinstance(x, list):
         x = list(x)
 
@@ -19,12 +21,13 @@ def gen_pad_3d(x: Iterable, padding_token: int):
     buff.fill(padding_token)
     for i, sentence in enumerate(x):
         for j, char_ids in enumerate(sentence):
-            buff[i, j, :len(char_ids)] = char_ids
+            buff[i, j, : len(char_ids)] = char_ids
 
     return buff
 
 
-def gen_pad_2d(x: Iterable, padding_token: int):
+def gen_pad_2d(x, padding_token):
+    """Pad a 2D matrix."""
     if not isinstance(x, list):
         x = list(x)
 
@@ -33,21 +36,21 @@ def gen_pad_2d(x: Iterable, padding_token: int):
     buff = np.empty((batch_size, max_sentence_length))
     buff.fill(padding_token)
     for i, sentence in enumerate(x):
-            buff[i, :len(sentence)] = sentence
+        buff[i, : len(sentence)] = sentence
 
     return buff
 
 
 def split(l: list, batch_length: int):
-    return [l[i:i + batch_length] for i in range(0, len(l), batch_length)]
+    return [l[i : i + batch_length] for i in range(0, len(l), batch_length)]
 
 
-Batch = namedtuple('Batch', ["x", "y"])
+Batch = namedtuple("Batch", ["x", "y"])
 
 
 def build_from_clusters(
-        scale_f: Callable, index_clusters: Dict[int, list], feature_clusters: Dict[int, list],
-        padding_token: int, shuffle=True):
+    scale_f, index_clusters, feature_clusters, padding_token, shuffle=True
+):
 
     batches, indicies = [], []
     for len_key in feature_clusters.keys():
@@ -64,7 +67,8 @@ def build_from_clusters(
 
         for batch in data_splits:
             # get the first four features
-            # (conventionally set to :: form, lemma, tag, head, rel and take advantage of them being well formed)
+            # (conventionally set to :: form, lemma, tag, head, rel and take
+            # advantage of them being well formed)
             features = map(lambda t: t[:5], batch)
             padded_features = gen_pad_3d(features, padding_token)
 
@@ -73,7 +77,8 @@ def build_from_clusters(
             padded_chars = gen_pad_3d(chars, padding_token)
 
             # this purely assumes the order of how vocabulary provides the data
-            # which in the format of :: Tuple[List(b,n), List(b,n), List(b,n), List(b,n), List(b,n), List(b,n,d)]
+            # which in the format of ::
+            # Tuple[List(b,n), List(b,n), List(b,n), List(b,n), List(b,n), List(b,n,d)]
             words, lemmas, tags, heads, rels = [
                 padded_features[:, i, :] for i in range(5)
             ]
@@ -91,7 +96,7 @@ def build_from_clusters(
     return indicies, batches
 
 
-class BucketBatcher(object):
+class BucketBatcher:
     def __init__(self, samples, padding_token):
         self._dataset = samples
         self._padding_token = padding_token
@@ -110,14 +115,17 @@ class BucketBatcher(object):
             len_clusters[n].append(sample)
             index_clusters[n].append(sample_id)
 
-        def batch_size_f(_): return max_bucket_size
+        def batch_size_f(_):
+            return max_bucket_size
+
         batch_indicies, batches = build_from_clusters(
-            batch_size_f, index_clusters, len_clusters, self._padding_token, shuffle)
+            batch_size_f, index_clusters, len_clusters, self._padding_token, shuffle
+        )
 
         return batch_indicies, batches
 
 
-class ScaledBatcher(object):
+class ScaledBatcher:
     def __init__(self, samples, cluster_count, padding_token):
         self._dataset = samples
         self._padding_token = padding_token
@@ -147,15 +155,20 @@ class ScaledBatcher(object):
             return max(cluster_size // num_of_splits, 1)
 
         indicies, batches = build_from_clusters(
-            compute_batch_size, self._indicies, self._clusters, self._padding_token, shuffle)
+            compute_batch_size,
+            self._indicies,
+            self._clusters,
+            self._padding_token,
+            shuffle,
+        )
 
         return indicies, batches
 
 
 class VanillaBatcher(object):
     def __init__(self):
-        # do we want this ? Runtime becomes somewhat unreliable because large sentences scale.
-        # to use this one hasto be very conservative about batch size_
+        # do we want this ? Runtime becomes somewhat unreliable because large sentences
+        # scale. To use this one hasto be very conservative about batch size_
         # I think we do... but lets w8
         pass
 
