@@ -55,7 +55,7 @@ python uniparse_evaluate.py --test [FILENAME.CONLLU] --gold [GOLD_REFERENCE.CONL
 ## Included models
 
 ### [Neural Models]
-UniParse includes a small collection of state-of-the-art neural models that are implemented using a high level model wrapper that should reduce development time significantly. This component currently supports two neural backends, namely: DyNet and PyTorch. One of these libraries are required to use the model wrapper. The remaining components contained in UniParse have no dependency, and UniParse can therefore safely be installed without.
+UniParse includes a small collection of state-of-the-art neural models that are implemented using a high level model wrapper that should reduce development time significantly. This component currently supports two neural backends, namely: DyNet and PyTorch. One of these libraries are required to use the model wrapper. The remaining components contained in UniParse have no dependencies.
 
 ```bash
 # uncomment desired (if any) backend
