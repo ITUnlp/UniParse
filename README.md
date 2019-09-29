@@ -28,7 +28,7 @@ from uniparse.decoders import eisner, cle
 | Eisner (UniParse) |     1.49      |     6.31     | ~ 6009       |   7500%  |
 
 ## Evaluation
-UniParse includes an evaluation script that both works from within the framework, as seen below, and can be used in isolation. For the former:
+UniParse includes an evaluation script that works from within the framework, as well as by itself. For the former:
 
 ```python
 from uniparse.evaluate import conll17_eval  # Wrapped UD evaluation script
